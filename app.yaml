@@ -6,6 +6,9 @@ handlers:
 - url: /(.+\.php)$
   script: \1
 
+- url: /app/(.+\.php)$
+  script: \1
+
 - url: /
   static_files: index.html
   upload: index.html
