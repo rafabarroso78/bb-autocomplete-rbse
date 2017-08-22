@@ -11,6 +11,15 @@ handlers:
   static_files: index.html
   upload: index.html
 
-- url: /js/autocomplete.js
-  static_files: /js/autocomplete.js
-  upload: /js/autocomplete.js
+- url: /js
+  static_dir: js
+
+- url: /jquery
+ static_dir: jquery
+
+- url: /img
+ static_dir: img
+
+ - url: /css
+ static_dir: css
+
