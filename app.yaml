@@ -3,13 +3,14 @@ api_version: 1
 threadsafe: true
 
 handlers:
-- url: /autocomplete
-  script: autocomplete.php
-
 - url: /
   static_files: index.html
   upload: index.html
 
+- url: /autocomplete
+  script: autocomplete.php
+
 - url: /(.*)
   static_files: \1
   upload: (.*)
+
