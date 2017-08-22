@@ -4,10 +4,6 @@ threadsafe: true
 
 handlers:
 - url: /
-  static_files: index.html
-  upload: index.html
-
-- url: /autocomplete
   script: autocomplete.php
 
 - url: /(.*)
