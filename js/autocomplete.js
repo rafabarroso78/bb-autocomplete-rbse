@@ -3,7 +3,7 @@ $(function() {
     $("#topic_title").autocomplete({
         source: function( request, response ) {
         $.ajax({
-                url: "autocomplete",
+                url: "autocomplete.php",
                 data: {term: request.term},
                 dataType: "json",
                 success: function( data ) {
