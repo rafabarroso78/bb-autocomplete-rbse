@@ -10,6 +10,10 @@
 	]);
 
 	$query = 'SELECT * FROM [rbse-webserv:bp.products] WHERE sku = '.$term.' LIMIT 1;';
+	$query2 = 'SELECT sku, name FROM [rbse-webserv:bp.products] where lower(name) like "%dur%";';
+
+	var_dump($query2);
+	
 	$options = ['useLegacySql' => true];
 	$queryResults = $bigQuery->runQuery($query, $options);
 
