@@ -6,13 +6,13 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Google\Cloud\BigQuery\BigQueryClient;
 
-$term = trim($_GET['id']);
+$term = strtolower(trim($_GET['id']));
 //[START build_service]
 $bigQuery = new BigQueryClient([
 	'projectId' => 'rbse-webserv',
 ]);
 
-$query = 'SELECT sku, name FROM [rbse-webserv:bp.products] where lower(name) like "%dur%";';
+$query = 'SELECT sku, name FROM [rbse-webserv:bp.products] where lower(name) like "%$term%";';
 $options = ['useLegacySql' => true];
 $queryResults1 = $bigQuery->runQuery($query, $options);
  
