@@ -14,7 +14,20 @@
 	$options = ['useLegacySql' => true];
 	$queryResults = $bigQuery->runQuery($query, $options);
 
-	var_dump($queryResults);
+	if ($queryResults->isComplete()) 
+        {
+            $i = 0;
+            $rows = $queryResults->rows();
+
+            foreach ($rows as $row) 
+            {
+                $i++;
+
+                $productInfo = $row;
+            }
+        } 
+
+    var_dump($productInfo);
 
 	foreach($jsonArray as $item)
 	{
