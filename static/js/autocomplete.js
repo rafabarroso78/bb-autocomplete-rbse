@@ -10,7 +10,8 @@ $(function() {
                     response( $.map( data, function( item ) {
                         return {
                             label: item.label,
-                            value: item.value
+                            value: item.value,
+                            id: item.id,
                         }
                     }));
                 }
@@ -18,9 +19,11 @@ $(function() {
         },
         minLength: 2,
         select: function(event, ui) {
+            
             var url = ui.item.id;
+            console.log(url);
             if(url != '#') {
-                location.href = '/';
+                location.href = '/product?id='+url;
             }
         },
  

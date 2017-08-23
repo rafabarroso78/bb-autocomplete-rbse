@@ -7,9 +7,12 @@ handlers:
 - url: /autocomplete
   script: autocomplete.php
 
-- url: /index.html
+- url: /
   static_files: index.html
   upload: index.html
+
+- url: /product
+  script: product.php
 
 - url: /static
   static_dir: static

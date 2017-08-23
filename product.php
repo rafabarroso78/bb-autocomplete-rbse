@@ -1,3 +1,16 @@
+<?php
+	include 'data.php';
+
+	$term = trim($_GET['id']);
+
+	foreach($jsonArray as $item)
+	{
+		if(strpos($item->sku, $term) !== false)
+		{
+			$productInfo = $item;
+		}
+	}
+?>
 <html>
 	<title>Product Search Demo App</title>
 	<head>
@@ -20,7 +33,9 @@
   		<div class="container-fluid">
 
 			<div class="sidebar">
-
+				<br><br>
+				<hr>
+				<a href="/"><< Back to Search</a>
 			<p></p>
 			<p><a href="{{ url }}"></a></p>
 
@@ -28,17 +43,23 @@
 
 			<div class="content">
 				<br>
-			  	<h2>Autocomplete Demo</h2>
-			  	<hr>
-	   			<h4>Product Lookup</h4>
-	   			Start typing the name of a product to get recommended results
-				<div style="background: #2bb5cf; padding: 20px; border-radius: 5px;">
-
-					<div id="my-demo" style="margin-top: 20px; margin-bottom: 20px;">
-						<input type="text" id="topic_title" style="width: 90%;height:30px;" class="ui-autocomplete-input" autocomplete="off">
-						<span role="status" aria-live="polite" class="ui-helper-hidden-accessible">1 result is available, use up and down arrow keys to navigate.</span>
-					</div>
-				</div>
+			  	<h1><? echo $productInfo->name ?><Br><span style="font-size:14px;">SKU: <? echo $productInfo->sku ?></span></h1>
+			  	<table class="table">
+			  		<tr>
+			  			<td style="width:300px;"><img src="<? echo $productInfo->image ?>" style="width:280;"></td>
+			  			<td style="text-align:left;">
+			  				<span style="font-size:24px;color:orange">$<? echo number_format($productInfo->price,2)?></span>
+			  				<br>
+			  				<br>
+			  				<b>Manufacturer</b><Br>
+			  				<? echo $productInfo->manufacturer ?><br>
+			  				<b>Model</b><Br>
+			  				<? echo $productInfo->model ?><br>
+			  				<b>Description</b><Br>
+			  				<? echo $productInfo->description ?>
+			  			</td>
+			  		</tr>
+			  	</table>
 				<!-- <a href="javascript:void(0)" class="btn btn-warning" id= "test-button">Test Here!</a> -->
 			</div> <!-- end content -->
 		</div> <!-- end container-fluid -->
