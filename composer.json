@@ -1,0 +1,6 @@
+{
+    "require": {
+        "google/cloud": "^0.36.0",
+        "google/cloud-bigquery": "^0.2.2"
+    }
+}

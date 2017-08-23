@@ -1,7 +1,15 @@
 <?php
+	namespace Google\Cloud\BigQuery;
+	use Google\Cloud\BigQuery\BigQueryClient;
+
 	include 'data.php';
 
 	$term = trim($_GET['id']);
+	# [START build_service]
+	$bigQuery = new BigQueryClient([
+    	'projectId' => 'rbse-webserv',
+	]);
+
 
 	foreach($jsonArray as $item)
 	{
