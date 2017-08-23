@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Datastore\Query;
+namespace Google\Cloud\Tests\Datastore\Query;
 
 use Google\Cloud\Datastore\EntityMapper;
 use Google\Cloud\Datastore\Key;
@@ -31,7 +31,7 @@ class QueryTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->mapper = new EntityMapper('foo', true, false);
+        $this->mapper = new EntityMapper('foo', true);
         $this->query = new Query($this->mapper);
     }
 

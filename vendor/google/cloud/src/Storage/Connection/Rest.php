@@ -17,16 +17,14 @@
 
 namespace Google\Cloud\Storage\Connection;
 
-use Google\Cloud\Core\RequestBuilder;
-use Google\Cloud\Core\RequestWrapper;
-use Google\Cloud\Core\RestTrait;
-use Google\Cloud\Core\Upload\AbstractUploader;
-use Google\Cloud\Core\Upload\MultipartUploader;
-use Google\Cloud\Core\Upload\ResumableUploader;
-use Google\Cloud\Core\Upload\StreamableUploader;
-use Google\Cloud\Core\UriTrait;
+use Google\Cloud\RequestBuilder;
+use Google\Cloud\RequestWrapper;
+use Google\Cloud\RestTrait;
 use Google\Cloud\Storage\Connection\ConnectionInterface;
-use Google\Cloud\Storage\StorageClient;
+use Google\Cloud\Upload\AbstractUploader;
+use Google\Cloud\Upload\MultipartUploader;
+use Google\Cloud\Upload\ResumableUploader;
+use Google\Cloud\UriTrait;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Psr7\Request;
 
@@ -48,14 +46,9 @@ class Rest implements ConnectionInterface
      */
     public function __construct(array $config = [])
     {
-        $config += [
-            'serviceDefinitionPath' => __DIR__ . '/ServiceDefinition/storage-v1.json',
-            'componentVersion' => StorageClient::VERSION
-        ];
-
         $this->setRequestWrapper(new RequestWrapper($config));
         $this->setRequestBuilder(new RequestBuilder(
-            $config['serviceDefinitionPath'],
+            __DIR__ . '/ServiceDefinition/storage-v1.json',
             self::BASE_URI
         ));
     }
@@ -208,7 +201,7 @@ class Rest implements ConnectionInterface
         ];
 
         $requestOptions = array_intersect_key($args, [
-            'restOptions' => null,
+            'httpOptions' => null,
             'retries' => null
         ]);
 
@@ -233,16 +226,10 @@ class Rest implements ConnectionInterface
     public function insertObject(array $args = [])
     {
         $args = $this->resolveUploadOptions($args);
-
-        $uploadType = AbstractUploader::UPLOAD_TYPE_RESUMABLE;
-        if ($args['streamable']) {
-            $uploaderClass = StreamableUploader::class;
-        } elseif ($args['resumable']) {
-            $uploaderClass = ResumableUploader::class;
-        } else {
-            $uploaderClass = MultipartUploader::class;
-            $uploadType = AbstractUploader::UPLOAD_TYPE_MULTIPART;
-        }
+        $isResumable = $args['resumable'];
+        $uploadType = $isResumable
+            ? AbstractUploader::UPLOAD_TYPE_RESUMABLE
+            : AbstractUploader::UPLOAD_TYPE_MULTIPART;
 
         $uriParams = [
             'bucket' => $args['bucket'],
@@ -252,7 +239,16 @@ class Rest implements ConnectionInterface
             ]
         ];
 
-        return new $uploaderClass(
+        if ($isResumable) {
+            return new ResumableUploader(
+                $this->requestWrapper,
+                $args['data'],
+                $this->expandUri(self::UPLOAD_URI, $uriParams),
+                $args['uploaderOptions']
+            );
+        }
+
+        return new MultipartUploader(
             $this->requestWrapper,
             $args['data'],
             $this->expandUri(self::UPLOAD_URI, $uriParams),
@@ -270,8 +266,7 @@ class Rest implements ConnectionInterface
             'name' => null,
             'validate' => true,
             'resumable' => null,
-            'streamable' => null,
-            'predefinedAcl' => null,
+            'predefinedAcl' => 'private',
             'metadata' => []
         ];
 
@@ -297,42 +292,16 @@ class Rest implements ConnectionInterface
             : Psr7\mimetype_from_filename($args['metadata']['name']);
 
         $uploaderOptionKeys = [
-            'restOptions',
+            'httpOptions',
             'retries',
-            'requestTimeout',
             'chunkSize',
             'contentType',
-            'metadata',
-            'uploadProgressCallback'
+            'metadata'
         ];
 
         $args['uploaderOptions'] = array_intersect_key($args, array_flip($uploaderOptionKeys));
         $args = array_diff_key($args, array_flip($uploaderOptionKeys));
 
         return $args;
-    }
-
-    /**
-     * @param  array $args
-     */
-    public function getBucketIamPolicy(array $args)
-    {
-        return $this->send('buckets', 'getIamPolicy', $args);
-    }
-
-    /**
-     * @param  array $args
-     */
-    public function setBucketIamPolicy(array $args)
-    {
-        return $this->send('buckets', 'setIamPolicy', $args);
-    }
-
-    /**
-     * @param  array $args
-     */
-    public function testBucketIamPermissions(array $args)
-    {
-        return $this->send('buckets', 'testIamPermissions', $args);
     }
 }

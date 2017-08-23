@@ -17,13 +17,6 @@
 
 namespace Google\Cloud\Tests\System\PubSub;
 
-use Google\Cloud\PubSub\Snapshot;
-use Google\Cloud\Core\ExponentialBackoff;
-
-/**
- * @group pubsub
- * @group pubsub-subscription
- */
 class ManageSubscriptionsTest extends PubSubTestCase
 {
     /**
@@ -33,19 +26,20 @@ class ManageSubscriptionsTest extends PubSubTestCase
     {
         $topicName = uniqid(self::TESTING_PREFIX);
         $topic = $client->createTopic($topicName);
-        self::$deletionQueue->add($topic);
-
         $subsToCreate = [
             uniqid(self::TESTING_PREFIX),
             uniqid(self::TESTING_PREFIX)
         ];
 
         foreach ($subsToCreate as $subToCreate) {
-            self::$deletionQueue->add($client->subscribe($subToCreate, $topicName));
+            self::$deletionQueue[] = $client->subscribe($subToCreate, $topicName);
         }
 
-        $this->assertSubsFound($client, $subsToCreate);
-        $this->assertSubsFound($topic, $subsToCreate);
+        $subs = $client->subscriptions();
+        $subsByTopic = $topic->subscriptions();
+
+        $this->assertSubsFound($subs, $subsToCreate);
+        $this->assertSubsFound($subsByTopic, $subsToCreate);
     }
 
     /**
@@ -55,78 +49,28 @@ class ManageSubscriptionsTest extends PubSubTestCase
     {
         $topicName = uniqid(self::TESTING_PREFIX);
         $topic = $client->createTopic($topicName);
-        self::$deletionQueue->add($topic);
-
+        self::$deletionQueue[] = $topic;
         $shortName = uniqid(self::TESTING_PREFIX);
         $this->assertFalse($topic->subscription($shortName)->exists());
-
         $sub = $client->subscribe($shortName, $topic->name());
-        self::$deletionQueue->add($sub);
+        self::$deletionQueue[] = $sub;
 
         $this->assertTrue($topic->subscription($shortName)->exists());
         $this->assertEquals($sub->name(), $sub->reload()['name']);
     }
 
-    /**
-     * @dataProvider clientProvider
-     */
-    public function testCreateAndListSnapshots($client)
+    private function assertSubsFound($subs, $expectedSubs)
     {
-        $subs = $client->subscriptions();
-        $sub = $subs->current();
-
-        $snapName = uniqid(self::TESTING_PREFIX);
-
-        $snap = $client->createSnapshot($snapName, $sub);
-        self::$deletionQueue->add($snap);
-
-        $this->assertInstanceOf(Snapshot::class, $snap);
-
-        $backoff = new ExponentialBackoff(8);
-        $hasFoundSub = $backoff->execute(function () use ($client, $snapName) {
-            $snaps = $client->snapshots();
-            $filtered = array_filter(iterator_to_array($snaps), function ($snap) use ($snapName) {
-                return strpos($snap->name(), $snapName) !== false;
-            });
-
-            if (count($filtered) === 1) {
-                return true;
-            }
-
-            throw new \Exception('Items not found in the allotted number of attempts.');
-        });
-
-        $this->assertTrue($hasFoundSub);
-
-        $sub->seekToSnapshot($client->snapshot($snapName));
-
-        $sub->seekToTime($client->timestamp(new \DateTime));
-    }
-
-    private function assertSubsFound($class, $expectedSubs)
-    {
-        $backoff = new ExponentialBackoff(8);
-        $hasFoundSubs = $backoff->execute(function () use ($class, $expectedSubs) {
-            $foundSubs = [];
-            $subs = $class->subscriptions();
-
-            foreach ($subs as $sub) {
-                $nameParts = explode('/', $sub->name());
-                $sName = end($nameParts);
-                foreach ($expectedSubs as $key => $expectedSub) {
-                    if ($sName === $expectedSub) {
-                        $foundSubs[$key] = $sName;
-                    }
+        $foundSubs = [];
+        foreach ($subs as $sub) {
+            $sName = end(explode('/', $sub->name()));
+            foreach ($expectedSubs as $key => $expectedSub) {
+                if ($sName === $expectedSub) {
+                    $foundSubs[$key] = $sName;
                 }
             }
+        }
 
-            if (sort($foundSubs) === sort($expectedSubs)) {
-                return true;
-            }
-
-            throw new \Exception('Items not found in the allotted number of attempts.');
-        });
-
-        $this->assertTrue($hasFoundSubs);
+        $this->assertEquals($expectedSubs, $foundSubs);
     }
 }

@@ -17,9 +17,6 @@
 
 namespace Google\Cloud\Tests\System\Logging;
 
-/**
- * @group logging
- */
 class ManageSinksTest extends LoggingTestCase
 {
     /**
@@ -41,7 +38,7 @@ class ManageSinksTest extends LoggingTestCase
                 'filter' => 'severity >= ERROR'
             ]
         );
-        self::$deletionQueue->add($sink);
+        self::$deletionQueue[] = $sink;
 
         $sinks = iterator_to_array($client->sinks());
 
@@ -67,7 +64,7 @@ class ManageSinksTest extends LoggingTestCase
         $this->assertFalse($client->sink($name)->exists());
 
         $sink = $client->createSink($name, $destination, $options);
-        self::$deletionQueue->add($sink);
+        self::$deletionQueue[] = $sink;
 
         $this->assertTrue($client->sink($name)->exists());
         $this->assertEquals($destination, $sink->info()['destination']);
@@ -113,7 +110,7 @@ class ManageSinksTest extends LoggingTestCase
             'filter' => 'severity >= DEBUG'
         ];
         $sink = $client->createSink($name, $destination, $createOptions);
-        self::$deletionQueue->add($sink);
+        self::$deletionQueue[] = $sink;
 
         $info = $sink->update($updateOptions);
 
@@ -133,7 +130,6 @@ class ManageSinksTest extends LoggingTestCase
         ];
         $destination = sprintf('pubsub.googleapis.com/%s', self::$topic->info()['name']);
         $sink = $client->createSink($name, $destination, $options);
-        self::$deletionQueue->add($sink);
 
         $this->assertEquals($options['outputVersionFormat'], $sink->reload()['outputVersionFormat']);
     }

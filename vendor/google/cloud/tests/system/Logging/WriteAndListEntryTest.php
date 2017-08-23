@@ -17,11 +17,8 @@
 
 namespace Google\Cloud\Tests\System\Logging;
 
-use Google\Cloud\Core\ExponentialBackoff;
+use Google\Cloud\ExponentialBackoff;
 
-/**
- * @group logging
- */
 class WriteAndListEntryTest extends LoggingTestCase
 {
     /**
@@ -30,9 +27,11 @@ class WriteAndListEntryTest extends LoggingTestCase
     public function testWriteTextEntry($client)
     {
         $logger = $client->logger(uniqid(self::TESTING_PREFIX));
-        self::$deletionQueue->add($logger);
+        self::$deletionQueue[] = $logger;
         $data = 'test';
-        $entry = $logger->entry($data);
+        $entry = $logger->entry($data, [
+            'type' => 'global'
+        ]);
 
         $logger->write($entry);
 
@@ -41,7 +40,7 @@ class WriteAndListEntryTest extends LoggingTestCase
             $entries = iterator_to_array($logger->entries());
 
             if (count($entries) === 0) {
-                throw new \Exception('Entries not found in the allotted number of attempts.');
+                throw new \Exception();
             }
 
             return $entries;
@@ -56,7 +55,7 @@ class WriteAndListEntryTest extends LoggingTestCase
     public function testWriteJsonEntry($client)
     {
         $logger = $client->logger(uniqid(self::TESTING_PREFIX));
-        self::$deletionQueue->add($logger);
+        self::$deletionQueue[] = $logger;
         $data = [
             'test' => true,
             'hello' => 'world',
@@ -64,7 +63,10 @@ class WriteAndListEntryTest extends LoggingTestCase
                 'data'
             ]
         ];
-        $entry = $logger->entry($data);
+
+        $entry = $logger->entry($data, [
+            'type' => 'global'
+        ]);
 
         $logger->write($entry);
 
@@ -73,7 +75,7 @@ class WriteAndListEntryTest extends LoggingTestCase
             $entries = iterator_to_array($logger->entries());
 
             if (count($entries) === 0) {
-                throw new \Exception('Entries not found in the allotted number of attempts.');
+                throw new \Exception();
             }
 
             return $entries;
@@ -88,11 +90,15 @@ class WriteAndListEntryTest extends LoggingTestCase
     public function testWritesMultipleTextEntries($client)
     {
         $logger = $client->logger(uniqid(self::TESTING_PREFIX));
-        self::$deletionQueue->add($logger);
+        self::$deletionQueue[] = $logger;
         $data = 'test';
         $entriesToWrite = [
-            $logger->entry($data),
-            $logger->entry($data)
+            $logger->entry($data, [
+                'type' => 'global'
+            ]),
+            $logger->entry($data, [
+                'type' => 'global'
+            ])
         ];
 
         $logger->writeBatch($entriesToWrite);
@@ -102,7 +108,7 @@ class WriteAndListEntryTest extends LoggingTestCase
             $entries = iterator_to_array($logger->entries());
 
             if (count($entries) !== count($entriesToWrite)) {
-                throw new \Exception('Entries not found in the allotted number of attempts.');
+                throw new \Exception();
             }
 
             return $entries;
@@ -118,7 +124,7 @@ class WriteAndListEntryTest extends LoggingTestCase
     public function testWritesEntryWithMetadata($client)
     {
         $logger = $client->logger(uniqid(self::TESTING_PREFIX));
-        self::$deletionQueue->add($logger);
+        self::$deletionQueue[] = $logger;
         $data = 'test';
         $httpRequest = [
             'requestMethod' => 'GET',
@@ -129,7 +135,8 @@ class WriteAndListEntryTest extends LoggingTestCase
             'test' => 'label'
         ];
         $severity = 'INFO';
-        $entry = $logger->entry($data, [
+
+        $entry = $logger->entry($data, ['type' => 'global'], [
             'httpRequest' => $httpRequest,
             'labels' => $labels,
             'severity' => 200
@@ -142,7 +149,7 @@ class WriteAndListEntryTest extends LoggingTestCase
             $entries = iterator_to_array($logger->entries());
 
             if (count($entries) === 0) {
-                throw new \Exception('Entries not found in the allotted number of attempts.');
+                throw new \Exception();
             }
 
             return $entries;
@@ -224,18 +231,18 @@ class WriteAndListEntryTest extends LoggingTestCase
     private function assertPsrLoggerWrites($client, $level)
     {
         $logName = uniqid(self::TESTING_PREFIX);
-        $psrLogger = $client->psrLogger($logName);
+        $psrLogger = $client->psrLogger($logName, [
+            'type' => 'global'
+        ]);
         $logger = $client->logger($logName);
-        self::$deletionQueue->add($logger);
+        self::$deletionQueue[] = $logger;
         $data = $level;
         $httpRequest = [
             'requestMethod' => 'GET'
         ];
 
         $psrLogger->$level($data, [
-            'stackdriverOptions' => [
-                'httpRequest' => $httpRequest
-            ]
+            'httpRequest' => $httpRequest
         ]);
 
         $backoff = new ExponentialBackoff(8);
@@ -243,14 +250,14 @@ class WriteAndListEntryTest extends LoggingTestCase
             $entries = iterator_to_array($logger->entries());
 
             if (count($entries) === 0) {
-                throw new \Exception('Entries not found in the allotted number of attempts.');
+                throw new \Exception();
             }
 
             return $entries;
         });
         $actualEntryInfo = $entries[0]->info();
 
-        $this->assertEquals($data, $actualEntryInfo['jsonPayload']['message']);
+        $this->assertEquals($data, $actualEntryInfo['textPayload']);
         $this->assertEquals($httpRequest['requestMethod'], $actualEntryInfo['httpRequest']['requestMethod']);
     }
 }

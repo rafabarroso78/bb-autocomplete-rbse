@@ -15,17 +15,13 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\BigQuery;
+namespace Google\Cloud\Tests\BigQuery;
 
 use Google\Cloud\BigQuery\BigQueryClient;
-use Google\Cloud\BigQuery\Bytes;
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
 use Google\Cloud\BigQuery\Dataset;
-use Google\Cloud\BigQuery\Date;
 use Google\Cloud\BigQuery\Job;
 use Google\Cloud\BigQuery\QueryResults;
-use Google\Cloud\BigQuery\Time;
-use Google\Cloud\BigQuery\Timestamp;
 use Prophecy\Argument;
 
 /**
@@ -45,12 +41,9 @@ class BigQueryClientTest extends \PHPUnit_Framework_TestCase
         $this->client = new BigQueryTestClient(['projectId' => $this->projectId]);
     }
 
-    /**
-     * @dataProvider queryDataProvider
-     */
-    public function testRunsQuery($query, $options, $expected)
+    public function testRunsQuery()
     {
-        $this->connection->query($expected)
+        $this->connection->query(Argument::any())
             ->willReturn([
                 'jobReference' => [
                     'jobId' => $this->jobId
@@ -58,105 +51,28 @@ class BigQueryClientTest extends \PHPUnit_Framework_TestCase
             ])
             ->shouldBeCalledTimes(1);
         $this->client->setConnection($this->connection->reveal());
-        $queryResults = $this->client->runQuery($query, $options);
+        $queryResults = $this->client->runQuery('someQuery');
 
         $this->assertInstanceOf(QueryResults::class, $queryResults);
         $this->assertEquals($this->jobId, $queryResults->identity()['jobId']);
     }
 
-    /**
-     * @dataProvider queryDataProvider
-     */
-    public function testRunsQueryAsJob($query, $options, $expected)
+    public function testRunsQueryAsJob()
     {
-        $projectId = $expected['projectId'];
-        unset($expected['projectId']);
-        $this->connection->insertJob([
-            'projectId' => $projectId,
-            'configuration' => [
-                'query' => $expected
-            ]
-        ])
+        $this->connection->insertJob(Argument::any())
             ->willReturn([
                 'jobReference' => ['jobId' => $this->jobId]
             ])
             ->shouldBeCalledTimes(1);
         $this->client->setConnection($this->connection->reveal());
-        $job = $this->client->runQueryAsJob($query, $options);
+        $job = $this->client->runQueryAsJob('someQuery', [
+            'jobConfig' => [
+                'writeDisposition' => 'WRITE_TRUNCATE'
+            ]
+        ]);
 
         $this->assertInstanceOf(Job::class, $job);
         $this->assertEquals($this->jobId, $job->id());
-    }
-
-    public function queryDataProvider()
-    {
-        $query = 'someQuery';
-
-        return [
-            [
-                $query,
-                [],
-                [
-                    'projectId' => $this->projectId,
-                    'query' => $query
-                ]
-            ],
-            [
-                $query,
-                [
-                    'parameters' => [
-                        'test' => 'parameter'
-                    ]
-                ],
-                [
-                    'projectId' => $this->projectId,
-                    'query' => $query,
-                    'parameterMode' => 'named',
-                    'useLegacySql' => false,
-                    'queryParameters' => [
-                        [
-                            'name' => 'test',
-                            'parameterType' => [
-                                'type' => 'STRING'
-                            ],
-                            'parameterValue' => [
-                                'value' => 'parameter'
-                            ]
-                        ]
-                    ]
-                ]
-            ],
-            [
-                $query,
-                [
-                    'parameters' => [1, 2]
-                ],
-                [
-                    'projectId' => $this->projectId,
-                    'query' => 'someQuery',
-                    'parameterMode' => 'positional',
-                    'useLegacySql' => false,
-                    'queryParameters' => [
-                        [
-                            'parameterType' => [
-                                'type' => 'INT64'
-                            ],
-                            'parameterValue' => [
-                                'value' => 1
-                            ]
-                        ],
-                        [
-                            'parameterType' => [
-                                'type' => 'INT64'
-                            ],
-                            'parameterValue' => [
-                                'value' => 2
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ];
     }
 
     public function testGetsJob()
@@ -167,7 +83,7 @@ class BigQueryClientTest extends \PHPUnit_Framework_TestCase
 
     public function testGetsJobsWithNoResults()
     {
-        $this->connection->listJobs(['projectId' => $this->projectId])
+        $this->connection->listJobs(Argument::any())
             ->willReturn([])
             ->shouldBeCalledTimes(1);
 
@@ -179,7 +95,7 @@ class BigQueryClientTest extends \PHPUnit_Framework_TestCase
 
     public function testGetsJobsWithoutToken()
     {
-        $this->connection->listJobs(['projectId' => $this->projectId])
+        $this->connection->listJobs(Argument::any())
             ->willReturn([
                 'jobs' => [
                     ['jobReference' => ['jobId' => $this->jobId]]
@@ -195,23 +111,21 @@ class BigQueryClientTest extends \PHPUnit_Framework_TestCase
 
     public function testGetsJobsWithToken()
     {
-        $token = 'token';
-        $this->connection->listJobs(['projectId' => $this->projectId])
-            ->willReturn([
-                'nextPageToken' => $token,
-                'jobs' => [
-                    ['jobReference' => ['jobId' => 'someOtherJobId']]
+        $this->connection->listJobs(Argument::any())
+            ->willReturn(
+                [
+                    'nextPageToken' => 'token',
+                    'jobs' => [
+                        ['jobReference' => ['jobId' => 'someOtherJobId']]
+                    ]
+                ],
+                    [
+                    'jobs' => [
+                        ['jobReference' => ['jobId' => $this->jobId]]
+                    ]
                 ]
-            ])->shouldBeCalledTimes(1);
-        $this->connection->listJobs([
-            'projectId' => $this->projectId,
-            'pageToken' => $token
-        ])
-            ->willReturn([
-                'jobs' => [
-                    ['jobReference' => ['jobId' => $this->jobId]]
-                ]
-            ])->shouldBeCalledTimes(1);
+            )
+            ->shouldBeCalledTimes(2);
 
         $this->client->setConnection($this->connection->reveal());
         $job = iterator_to_array($this->client->jobs());
@@ -295,34 +209,6 @@ class BigQueryClientTest extends \PHPUnit_Framework_TestCase
         ]);
 
         $this->assertInstanceOf(Dataset::class, $dataset);
-    }
-
-    public function testGetsBytes()
-    {
-        $bytes = $this->client->bytes('1234');
-
-        $this->assertInstanceOf(Bytes::class, $bytes);
-    }
-
-    public function testGetsDate()
-    {
-        $bytes = $this->client->date(new \DateTime());
-
-        $this->assertInstanceOf(Date::class, $bytes);
-    }
-
-    public function testGetsTime()
-    {
-        $bytes = $this->client->time(new \DateTime());
-
-        $this->assertInstanceOf(Time::class, $bytes);
-    }
-
-    public function testGetsTimestamp()
-    {
-        $bytes = $this->client->timestamp(new \DateTime());
-
-        $this->assertInstanceOf(Timestamp::class, $bytes);
     }
 }
 

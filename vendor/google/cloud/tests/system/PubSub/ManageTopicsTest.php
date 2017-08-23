@@ -17,12 +17,6 @@
 
 namespace Google\Cloud\Tests\System\PubSub;
 
-use Google\Cloud\Core\ExponentialBackoff;
-
-/**
- * @group pubsub
- * @group pubsub-topic
- */
 class ManageTopicsTest extends PubSubTestCase
 {
     /**
@@ -30,38 +24,28 @@ class ManageTopicsTest extends PubSubTestCase
      */
     public function testCreateAndListTopics($client)
     {
+        $foundTopics = [];
         $topicsToCreate = [
             uniqid(self::TESTING_PREFIX),
             uniqid(self::TESTING_PREFIX)
         ];
 
         foreach ($topicsToCreate as $topicToCreate) {
-            self::$deletionQueue->add($client->createTopic($topicToCreate));
+            self::$deletionQueue[] = $client->createTopic($topicToCreate);
         }
 
-        $backoff = new ExponentialBackoff(8);
-        $hasFoundTopics = $backoff->execute(function () use ($client, $topicsToCreate) {
-            $foundTopics = [];
-            $topics = $client->topics();
+        $topics = $client->topics();
 
-            foreach ($topics as $topic) {
-                $nameParts = explode('/', $topic->name());
-                $sName = end($nameParts);
-                foreach ($topicsToCreate as $key => $topicToCreate) {
-                    if ($sName === $topicToCreate) {
-                        $foundTopics[$key] = $sName;
-                    }
+        foreach ($topics as $topic) {
+            $tName = end(explode('/', $topic->name()));
+            foreach ($topicsToCreate as $key => $topicToCreate) {
+                if ($tName === $topicToCreate) {
+                    $foundTopics[$key] = $tName;
                 }
             }
+        }
 
-            if (sort($foundTopics) === sort($topicsToCreate)) {
-                return true;
-            }
-
-            throw new \Exception('Items not found in the allotted number of attempts.');
-        });
-
-        $this->assertTrue($hasFoundTopics);
+        $this->assertEquals($topicsToCreate, $foundTopics);
     }
 
     /**
@@ -72,7 +56,7 @@ class ManageTopicsTest extends PubSubTestCase
         $shortName = uniqid(self::TESTING_PREFIX);
         $this->assertFalse($client->topic($shortName)->exists());
         $topic = $client->createTopic($shortName);
-        self::$deletionQueue->add($topic);
+        self::$deletionQueue[] = $topic;
 
         $this->assertTrue($client->topic($shortName)->exists());
         $this->assertEquals($topic->name(), $topic->reload()['name']);

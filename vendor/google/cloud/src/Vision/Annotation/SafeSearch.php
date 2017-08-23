@@ -17,19 +17,19 @@
 
 namespace Google\Cloud\Vision\Annotation;
 
-use Google\Cloud\Core\CallTrait;
+use Google\Cloud\CallTrait;
 
 /**
  * Represents a SafeSearch annotation result
  *
  * Example:
  * ```
- * use Google\Cloud\Vision\VisionClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $vision = new VisionClient();
+ * $cloud = new ServiceBuilder();
+ * $vision = $cloud->vision();
  *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
- * $image = $vision->image($imageResource, [ 'safeSearch' ]);
+ * $image = $vision->image(fopen(__DIR__ .'/assets/family-photo.jpg', 'r'), [ 'safeSearch' ]);
  * $annotation = $vision->annotate($image);
  *
  * $safeSearch = $annotation->safeSearch();
@@ -86,8 +86,6 @@ use Google\Cloud\Core\CallTrait;
  *
  *     @return array
  * }
- *
- * @see https://cloud.google.com/vision/docs/reference/rest/v1/images/annotate#SafeSearchAnnotation SafeSearchAnnotation
  */
 class SafeSearch extends AbstractFeature
 {

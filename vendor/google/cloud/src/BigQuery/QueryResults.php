@@ -18,9 +18,7 @@
 namespace Google\Cloud\BigQuery;
 
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
-use Google\Cloud\Core\Exception\GoogleException;
-use Google\Cloud\Core\Iterator\ItemIterator;
-use Google\Cloud\Core\Iterator\PageIterator;
+use Google\Cloud\Exception\GoogleException;
 
 /**
  * QueryResults represent the result of a BigQuery SQL query. Read more at the
@@ -33,9 +31,9 @@ use Google\Cloud\Core\Iterator\PageIterator;
 class QueryResults
 {
     /**
-     * @var ConnectionInterface Represents a connection to BigQuery.
+     * @var ConnectionInterface $connection Represents a connection to BigQuery.
      */
-    protected $connection;
+    private $connection;
 
     /**
      * @var array The query result's identity.
@@ -46,11 +44,6 @@ class QueryResults
      * @var array The query result's metadata.
      */
     private $info;
-
-    /**
-     * @var ValueMapper $mapper Maps values between PHP and BigQuery.
-     */
-    private $mapper;
 
     /**
      * @var array The options to use when reloading query data.
@@ -64,16 +57,9 @@ class QueryResults
      * @param string $projectId The project's ID.
      * @param array $info The query result's metadata.
      * @param array $reloadOptions The options to use when reloading query data.
-     * @param ValueMapper $mapper Maps values between PHP and BigQuery.
      */
-    public function __construct(
-        ConnectionInterface $connection,
-        $jobId,
-        $projectId,
-        array $info,
-        array $reloadOptions,
-        ValueMapper $mapper
-    ) {
+    public function __construct(ConnectionInterface $connection, $jobId, $projectId, array $info, array $reloadOptions)
+    {
         $this->connection = $connection;
         $this->info = $info;
         $this->reloadOptions = $reloadOptions;
@@ -81,31 +67,12 @@ class QueryResults
             'jobId' => $jobId,
             'projectId' => $projectId
         ];
-        $this->mapper = $mapper;
     }
 
     /**
      * Retrieves the rows associated with the query and merges them together
      * with the table's schema. It is recommended to check the completeness of
      * the query before attempting to access rows.
-     *
-     * Refer to the table below for a guide on how BigQuery types are mapped as
-     * they come back from the API.
-     *
-     * | **PHP Type**                               | **BigQuery Data Type**               |
-     * |--------------------------------------------|--------------------------------------|
-     * | `\DateTimeInterface`                       | `DATETIME`                           |
-     * | {@see Google\Cloud\BigQuery\Bytes}         | `BYTES`                              |
-     * | {@see Google\Cloud\BigQuery\Date}          | `DATE`                               |
-     * | {@see Google\Cloud\Core\Int64}             | `INTEGER`                            |
-     * | {@see Google\Cloud\BigQuery\Time}          | `TIME`                               |
-     * | {@see Google\Cloud\BigQuery\Timestamp}     | `TIMESTAMP`                          |
-     * | Associative Array                          | `RECORD`                             |
-     * | Non-Associative Array                      | `RECORD` (Repeated)                  |
-     * | `float`                                    | `FLOAT`                              |
-     * | `int`                                      | `INTEGER`                            |
-     * | `string`                                   | `STRING`                             |
-     * | `bool`                                     | `BOOLEAN`                            |
      *
      * Example:
      * ```
@@ -115,13 +82,13 @@ class QueryResults
      *     $rows = $queryResults->rows();
      *
      *     foreach ($rows as $row) {
-     *         echo $row['name'] . PHP_EOL;
+     *         echo $row['name'];
      *     }
      * }
      * ```
      *
      * @param array $options [optional] Configuration options.
-     * @return ItemIterator
+     * @return array
      * @throws GoogleException Thrown if the query has not yet completed.
      */
     public function rows(array $options = [])
@@ -130,37 +97,31 @@ class QueryResults
             throw new GoogleException('The query has not completed yet.');
         }
 
+        if (!isset($this->info['rows'])) {
+            return;
+        }
+
         $schema = $this->info['schema']['fields'];
 
-        return new ItemIterator(
-            new PageIterator(
-                function (array $row) use ($schema) {
-                    $mergedRow = [];
+        while (true) {
+            $options['pageToken'] = isset($this->info['pageToken']) ? $this->info['pageToken'] : null;
 
-                    if ($row === null) {
-                        return $mergedRow;
-                    }
+            foreach ($this->info['rows'] as $row) {
+                $mergedRow = [];
 
-                    if (!array_key_exists('f', $row)) {
-                        throw new GoogleException('Bad response - missing key "f" for a row.');
-                    }
+                foreach ($row['f'] as $key => $value) {
+                    $mergedRow[$schema[$key]['name']] = $value['v'];
+                }
 
-                    foreach ($row['f'] as $key => $value) {
-                        $fieldSchema = $schema[$key];
-                        $mergedRow[$fieldSchema['name']] = $this->mapper->fromBigQuery($value, $fieldSchema);
-                    }
+                yield $mergedRow;
+            }
 
-                    return $mergedRow;
-                },
-                [$this->connection, 'getQueryResults'],
-                $options + $this->identity,
-                [
-                    'itemsKey' => 'rows',
-                    'firstPage' => $this->info,
-                    'nextResultTokenKey' => 'pageToken'
-                ]
-            )
-        );
+            if (!$options['pageToken']) {
+                return;
+            }
+
+            $this->info = $this->connection->getQueryResults($options + $this->identity);
+        }
     }
 
     /**
@@ -220,9 +181,7 @@ class QueryResults
      * $queryResults->isComplete(); // returns false
      * sleep(1); // let's wait for a moment...
      * $queryResults->reload(); // executes a network request
-     * if ($queryResults->isComplete()) {
-     *     echo "Query complete!";
-     * }
+     * $queryResults->isComplete(); // true
      * ```
      *
      * @see https://cloud.google.com/bigquery/docs/reference/v2/jobs/getQueryResults
@@ -231,7 +190,7 @@ class QueryResults
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type int $maxResults Maximum number of results to read per page.
+     *     @type int $maxResults Maximum number of results to read.
      *     @type int $startIndex Zero-based index of the starting row.
      *     @type int $timeoutMs How long to wait for the query to complete, in
      *           milliseconds. **Defaults to** `10000` milliseconds (10 seconds).

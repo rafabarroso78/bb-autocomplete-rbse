@@ -17,10 +17,7 @@
 
 namespace Google\Cloud\Storage;
 
-use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\Exception\NotFoundException;
-use Google\Cloud\Core\Timestamp;
-use Google\Cloud\Core\Upload\SignedUrlUploader;
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\Storage\Connection\ConnectionInterface;
 use GuzzleHttp\Psr7;
 use Psr\Http\Message\StreamInterface;
@@ -28,23 +25,10 @@ use Psr\Http\Message\StreamInterface;
 /**
  * Objects are the individual pieces of data that you store in Google Cloud
  * Storage.
- *
- * Example:
- * ```
- * use Google\Cloud\Storage\StorageClient;
- *
- * $storage = new StorageClient();
- *
- * $bucket = $storage->bucket('my-bucket');
- * $object = $bucket->object('my-object');
- * ```
  */
 class StorageObject
 {
-    use ArrayTrait;
     use EncryptionTrait;
-
-    const DEFAULT_DOWNLOAD_URL = 'https://storage.googleapis.com';
 
     /**
      * @var Acl ACL for the object.
@@ -54,10 +38,10 @@ class StorageObject
     /**
      * @var ConnectionInterface Represents a connection to Cloud Storage.
      */
-    protected $connection;
+    private $connection;
 
     /**
-     * @var array|null The object's encryption data.
+     * @var array The object's encryption data.
      */
     private $encryptionData;
 
@@ -67,7 +51,7 @@ class StorageObject
     private $identity;
 
     /**
-     * @var array|null The object's metadata.
+     * @var array The object's metadata.
      */
     private $info;
 
@@ -88,7 +72,7 @@ class StorageObject
         $name,
         $bucket,
         $generation = null,
-        array $info = [],
+        array $info = null,
         $encryptionKey = null,
         $encryptionKeySHA256 = null
     ) {
@@ -101,8 +85,7 @@ class StorageObject
         $this->identity = [
             'bucket' => $bucket,
             'object' => $name,
-            'generation' => $generation,
-            'userProject' => $this->pluck('requesterProjectId', $info, false)
+            'generation' => $generation
         ];
         $this->acl = new Acl($this->connection, 'objectAccessControls', $this->identity);
     }
@@ -112,7 +95,10 @@ class StorageObject
      *
      * Example:
      * ```
+     * use Google\Cloud\Storage\Acl;
+     *
      * $acl = $object->acl();
+     * $acl->add('allAuthenticatedUsers', Acl::ROLE_READER);
      * ```
      *
      * @see https://cloud.google.com/storage/docs/access-control More about Access Control Lists
@@ -129,18 +115,16 @@ class StorageObject
      *
      * Example:
      * ```
-     * if ($object->exists()) {
-     *     echo 'Object exists!';
-     * }
+     * $object = $bucket->object('my-file.txt');
+     * $object->exists();
      * ```
      *
-     * @param array $options [optional] Configuration options.
      * @return bool
      */
-    public function exists(array $options = [])
+    public function exists()
     {
         try {
-            $this->connection->getObject($this->identity + $options + ['fields' => 'name']);
+            $this->connection->getObject($this->identity + ['fields' => 'name']);
         } catch (NotFoundException $ex) {
             return false;
         }
@@ -178,7 +162,7 @@ class StorageObject
      */
     public function delete(array $options = [])
     {
-        $this->connection->deleteObject($options + array_filter($this->identity));
+        $this->connection->deleteObject($options + $this->identity);
     }
 
     /**
@@ -214,10 +198,8 @@ class StorageObject
      *     @type string $ifMetagenerationNotMatch Makes the operation
      *           conditional on whether the object's current metageneration does
      *           not match the given value.
-     *     @type string $predefinedAcl Predefined ACL to apply to the object.
-     *           Acceptable values include, `"authenticatedRead"`,
-     *           `"bucketOwnerFullControl"`, `"bucketOwnerRead"`, `"private"`,
-     *           `"projectPrivate"`, and `"publicRead"`.
+     *     @type string $predefinedAcl Apply a predefined set of access controls
+     *           to this object.
      *     @type string $projection Determines which properties to return. May
      *           be either 'full' or 'noAcl'.
      *     @type string $fields Selector which will cause the response to only
@@ -228,13 +210,7 @@ class StorageObject
     public function update(array $metadata, array $options = [])
     {
         $options += $metadata;
-
-        // can only set predefinedAcl or acl
-        if (isset($options['predefinedAcl'])) {
-            $options['acl'] = null;
-        }
-
-        return $this->info = $this->connection->patchObject($options + array_filter($this->identity));
+        return $this->info = $this->connection->patchObject($options + $this->identity);
     }
 
     /**
@@ -268,18 +244,19 @@ class StorageObject
      *
      *     @type string $name The name of the destination object. **Defaults
      *           to** the name of the source object.
-     *     @type string $predefinedAcl Predefined ACL to apply to the object.
-     *           Acceptable values include, `"authenticatedRead"`,
-     *           `"bucketOwnerFullControl"`, `"bucketOwnerRead"`, `"private"`,
-     *           `"projectPrivate"`, and `"publicRead"`.
-     *     @type string $encryptionKey A base64 encoded AES-256 customer-supplied
-     *           encryption key. It will be neccesary to provide this when a key
-     *           was used during the object's creation.
-     *     @type string $encryptionKeySHA256 Base64 encoded SHA256 hash of the
-     *           customer-supplied encryption key. This value will be calculated
-     *           from the `encryptionKey` on your behalf if not provided, but
-     *           for best performance it is recommended to pass in a cached
-     *           version of the already calculated SHA.
+     *     @type string $predefinedAcl Access controls to apply to the
+     *           destination object. Acceptable values include
+     *           `authenticatedRead`, `bucketOwnerFullControl`,
+     *           `bucketOwnerRead`, `private`, `projectPrivate`, and
+     *           `publicRead`.
+     *     @type string $encryptionKey An AES-256 customer-supplied encryption
+     *           key. It will be neccesary to provide this when a key was used
+     *           during the object's creation. If provided one must also include
+     *           an `encryptionKeySHA256`.
+     *     @type string $encryptionKeySHA256 The SHA256 hash of the
+     *           customer-supplied encryption key. It will be neccesary to
+     *           provide this when a key was used during the object's creation.
+     *           If provided one must also include an `encryptionKey`.
      *     @type string $ifGenerationMatch Makes the operation conditional on
      *           whether the destination object's current generation matches the
      *           given value.
@@ -321,7 +298,7 @@ class StorageObject
             $response['name'],
             $response['bucket'],
             $response['generation'],
-            $response + ['requesterProjectId' => $this->identity['userProject']],
+            $response,
             $key,
             $keySHA256
         );
@@ -357,11 +334,15 @@ class StorageObject
      * ```
      * // Rotate customer-supplied encryption keys.
      * $key = file_get_contents(__DIR__ . '/key.txt');
-     * $destinationKey = base64_encode(openssl_random_pseudo_bytes(32)); // Make sure to remember your key.
+     * $hash = hash('SHA256', $key, true);
+     * $destinationKey = openssl_random_pseudo_bytes(32); // Make sure to remember your key.
+     * $destinationHash = hash('SHA256', $destinationKey, true);
      *
      * $rewrittenObject = $object->rewrite('otherBucket', [
      *     'encryptionKey' => $key,
-     *     'destinationEncryptionKey' => $destinationKey
+     *     'encryptionKeySHA256' => $hash,
+     *     'destinationEncryptionKey' => $destinationKey,
+     *     'destinationEncryptionKeySHA256' => $destinationHash
      * ]);
      * ```
      *
@@ -374,10 +355,11 @@ class StorageObject
      *
      *     @type string $name The name of the destination object. **Defaults
      *           to** the name of the source object.
-     *     @type string $predefinedAcl Predefined ACL to apply to the object.
-     *           Acceptable values include, `"authenticatedRead"`,
-     *           `"bucketOwnerFullControl"`, `"bucketOwnerRead"`, `"private"`,
-     *           `"projectPrivate"`, and `"publicRead"`.
+     *     @type string $predefinedAcl Access controls to apply to the
+     *           destination object. Acceptable values include
+     *           `authenticatedRead`, `bucketOwnerFullControl`,
+     *           `bucketOwnerRead`, `private`, `projectPrivate`, and
+     *           `publicRead`.
      *     @type string $maxBytesRewrittenPerCall The maximum number of bytes
      *           that will be rewritten per rewrite request. Most callers
      *           shouldn't need to specify this parameter - it is primarily in
@@ -385,23 +367,21 @@ class StorageObject
      *           integral multiple of 1 MiB (1048576). Also, this only applies
      *           to requests where the source and destination span locations
      *           and/or storage classes.
-     *     @type string $encryptionKey A base64 encoded AES-256 customer-supplied
-     *           encryption key. It will be neccesary to provide this when a key
-     *           was used during the object's creation.
-     *     @type string $encryptionKeySHA256 Base64 encoded SHA256 hash of the
-     *           customer-supplied encryption key. This value will be calculated
-     *           from the `encryptionKey` on your behalf if not provided, but
-     *           for best performance it is recommended to pass in a cached
-     *           version of the already calculated SHA.
-     *     @type string $destinationEncryptionKey A base64 encoded AES-256
-     *           customer-supplied encryption key that will be used to encrypt
-     *           the rewritten object.
-     *     @type string $destinationEncryptionKeySHA256 Base64 encoded SHA256
-     *           hash of the customer-supplied destination encryption key. This
-     *           value will be calculated from the `destinationEncryptionKey` on
-     *           your behalf if not provided, but for best performance it is
-     *           recommended to pass in a cached version of the already
-     *           calculated SHA.
+     *     @type string $encryptionKey An AES-256 customer-supplied encryption
+     *           key. It will be neccesary to provide this when a key was used
+     *           during the object's creation. If provided one must also include
+     *           an `encryptionKeySHA256`.
+     *     @type string $encryptionKeySHA256 The SHA256 hash of the
+     *           customer-supplied encryption key. It will be neccesary to
+     *           provide this when a key was used during the object's creation.
+     *           If provided one must also include an `encryptionKey`.
+     *     @type string $destinationEncryptionKey An AES-256 customer-supplied
+     *           encryption key that will be used to encrypt the rewritten
+     *           object. If provided one must also include a
+     *           `destinationEncryptionKeySHA256`.
+     *     @type string $destinationEncryptionKeySHA256 The SHA256 hash of the
+     *           customer-supplied destination encryption key. If provided one
+     *           must also include a `destinationEncryptionKey`.
      *     @type string $ifGenerationMatch Makes the operation conditional on
      *           whether the destination object's current generation matches the
      *           given value.
@@ -450,7 +430,7 @@ class StorageObject
             $response['resource']['name'],
             $response['resource']['bucket'],
             $response['resource']['generation'],
-            $response['resource'] + ['requesterProjectId' => $this->identity['userProject']],
+            $response['resource'],
             $destinationKey,
             $destinationKeySHA256
         );
@@ -474,18 +454,19 @@ class StorageObject
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type string $predefinedAcl Predefined ACL to apply to the object.
-     *           Acceptable values include, `"authenticatedRead"`,
-     *           `"bucketOwnerFullControl"`, `"bucketOwnerRead"`, `"private"`,
-     *           `"projectPrivate"`, and `"publicRead"`.
-     *     @type string $encryptionKey A base64 encoded AES-256 customer-supplied
-     *           encryption key. It will be neccesary to provide this when a key
-     *           was used during the object's creation.
-     *     @type string $encryptionKeySHA256 Base64 encoded SHA256 hash of the
-     *           customer-supplied encryption key. This value will be calculated
-     *           from the `encryptionKey` on your behalf if not provided, but
-     *           for best performance it is recommended to pass in a cached
-     *           version of the already calculated SHA.
+     *     @type string $predefinedAcl Access controls to apply to the
+     *           destination object. Acceptable values include
+     *           `authenticatedRead`, `bucketOwnerFullControl`,
+     *           `bucketOwnerRead`, `private`, `projectPrivate`, and
+     *           `publicRead`.
+     *     @type string $encryptionKey An AES-256 customer-supplied encryption
+     *           key. It will be neccesary to provide this when a key was used
+     *           during the object's creation. If provided one must also include
+     *           an `encryptionKeySHA256`.
+     *     @type string $encryptionKeySHA256 The SHA256 hash of the
+     *           customer-supplied encryption key. It will be neccesary to
+     *           provide this when a key was used during the object's creation.
+     *           If provided one must also include an `encryptionKey`.
      *     @type string $ifGenerationMatch Makes the operation conditional on
      *           whether the destination object's current generation matches the
      *           given value.
@@ -510,25 +491,18 @@ class StorageObject
      *     @type string $ifSourceMetagenerationNotMatch Makes the operation
      *           conditional on whether the source object's current
      *           metageneration does not match the given value.
-     *     @type string $destinationBucket Will move to this bucket if set. If
-     *           not set, will default to the same bucket.
      * }
      * @return StorageObject The renamed object.
      */
     public function rename($name, array $options = [])
     {
-        $destinationBucket = isset($options['destinationBucket'])
-            ? $options['destinationBucket']
-            : $this->identity['bucket'];
-        unset($options['destinationBucket']);
-
-        $copiedObject = $this->copy($destinationBucket, [
+        $copiedObject = $this->copy($this->identity['bucket'], [
             'name' => $name
         ] + $options);
 
         $this->delete(
             array_intersect_key($options, [
-                'restOptions' => null,
+                'httpOptions' => null,
                 'retries' => null
             ])
         );
@@ -543,7 +517,7 @@ class StorageObject
      * Example:
      * ```
      * $string = $object->downloadAsString();
-     * echo $string;
+     * file_put_contents($string, __DIR__ . '/my-file.txt');
      * ```
      *
      * @param array $options [optional] {
@@ -570,7 +544,7 @@ class StorageObject
      *
      * Example:
      * ```
-     * $stream = $object->downloadToFile(__DIR__ . '/my-file.txt');
+     * $object->downloadToFile(__DIR__ . '/my-file.txt');
      * ```
      *
      * @param string $path Path to download the file to.
@@ -631,320 +605,9 @@ class StorageObject
             $this->formatEncryptionHeaders(
                 $options
                 + $this->encryptionData
-                + array_filter($this->identity)
+                + $this->identity
             )
         );
-    }
-
-    /**
-     * Create a Signed URL for this object.
-     *
-     * Example:
-     * ```
-     * $url = $object->signedUrl(new Timestamp(new DateTime('tomorrow')));
-     * ```
-     *
-     * ```
-     * // Create a signed URL allowing updates to the object.
-     * $url = $object->signedUrl(new Timestamp(new DateTime('tomorrow')), [
-     *     'method' => 'PUT'
-     * ]);
-     * ```
-     *
-     * @param Timestamp|\DateTimeInterface|int $expires Specifies when the URL
-     *        will expire. May provide an instance of {@see Google\Cloud\Core\Timestamp},
-     *        [http://php.net/datetimeimmutable](`\DateTimeImmutable`), or a
-     *        UNIX timestamp as an integer.
-     * @param array $options {
-     *     Configuration Options.
-     *
-     *     @type string $method One of `GET`, `PUT` or `DELETE`.
-     *           **Defaults to** `GET`.
-     *     @type string $cname The CNAME for the bucket, for instance
-     *           `https://cdn.example.com`. **Defaults to**
-     *           `https://storage.googleapis.com`.
-     *     @type string $contentMd5 The MD5 digest value in base64. If you
-     *           provide this, the client must provide this HTTP header with
-     *           this same value in its request. If provided, take care to
-     *           always provide this value as a base64 encoded string.
-     *     @type string $contentType If you provide this value, the client must
-     *           provide this HTTP header set to the same value.
-     *     @type array $headers If these headers are used, the server will check
-     *           to make sure that the client provides matching values. Provide
-     *           headers as a key/value array, where the key is the header name,
-     *           and the value is an array of header values.
-     *     @type string $saveAsName The filename to prompt the user to save the
-     *           file as when the signed url is accessed. This is ignored if
-     *           `$options.responseDisposition` is set.
-     *     @type string $responseDisposition The
-     *           [`response-content-disposition`](http://www.iana.org/assignments/cont-disp/cont-disp.xhtml)
-     *           parameter of the signed url.
-     *     @type string $responseType The `response-content-type` parameter of the
-     *           signed url.
-     *     @type array $keyFile Keyfile data to use in place of the keyfile with
-     *           which the client was constructed. If `$options.keyFilePath` is
-     *           set, this option is ignored.
-     *     @type string $keyFilePath A path to a valid Keyfile to use in place
-     *           of the keyfile with which the client was constructed.
-     *     @type bool $forceOpenssl If true, OpenSSL will be used regardless of
-     *           whether phpseclib is available. **Defaults to** `false`.
-     * }
-     * @return string
-     * @throws \InvalidArgumentException If the given expiration is in the past.
-     * @throws \InvalidArgumentException If the given `$options.method` is not valid.
-     * @throws \InvalidArgumentException If the given `$options.keyFilePath` is not valid.
-     * @throws \InvalidArgumentException If the keyfile does not contain the required information.
-     */
-    public function signedUrl($expires, array $options = [])
-    {
-        $options += [
-            'method' => 'GET',
-            'cname' => self::DEFAULT_DOWNLOAD_URL,
-            'contentMd5' => null,
-            'contentType' => null,
-            'headers' => [],
-            'saveAsName' => null,
-            'responseDisposition' => null,
-            'responseType' => null,
-            'keyFile' => null,
-            'keyFilePath' => null,
-            'allowPost' => false,
-            'forceOpenssl' => false
-        ];
-
-        if ($expires instanceof Timestamp) {
-            $seconds = $expires->get()->format('U');
-        } elseif ($expires instanceof \DateTimeInterface) {
-            $seconds = $expires->format('U');
-        } elseif (is_numeric($expires)) {
-            $seconds = (int) $expires;
-        } else {
-            throw new \InvalidArgumentException('Invalid expiration.');
-        }
-
-        if ($seconds < time()) {
-            throw new \InvalidArgumentException('Expiration cannot be in the past.');
-        }
-
-        $allowedMethods = ['GET', 'PUT', 'POST', 'DELETE'];
-        $options['method'] = strtoupper($options['method']);
-        if (!in_array($options['method'], $allowedMethods)) {
-            throw new \InvalidArgumentException('$options.method must be one of `GET`, `PUT` or `DELETE`.');
-        }
-
-        if ($options['method'] === 'POST' && !$options['allowPost']) {
-            throw new \InvalidArgumentException(
-                'Invalid method. To create an upload URI, use StorageObject::signedUploadUrl().'
-            );
-        }
-
-        if ($options['keyFilePath']) {
-            if (!file_exists($options['keyFilePath'])) {
-                throw new \InvalidArgumentException(sprintf(
-                    'Keyfile path %s does not exist.',
-                    $options['keyFilePath']
-                ));
-            }
-
-            $keyFile = json_decode(file_get_contents($options['keyFilePath']), true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \InvalidArgumentException(sprintf(
-                    'Keyfile path %s does not contain valid json.',
-                    $options['keyFilePath']
-                ));
-            }
-        } elseif ($options['keyFile']) {
-            $keyFile = $options['keyFile'];
-        } else {
-            $requestWrapper = $this->connection->requestWrapper();
-            $keyFile = $requestWrapper->keyFile();
-        }
-
-        if (!isset($keyFile['private_key']) || !isset($keyFile['client_email'])) {
-            throw new \RuntimeException(
-                'Keyfile does not provide required information. ' .
-                'Please ensure keyfile includes `private_key` and `client_email`.'
-            );
-        }
-
-        $headers = [];
-        foreach ($options['headers'] as $name => $value) {
-            $value = (is_array($value))
-                ? implode(',', $value)
-                : $value;
-
-            $headers[] = $name .':'. $value;
-        }
-
-        if ($headers) {
-            $headers[] = '';
-        }
-
-        $resource = sprintf('/%s/%s', $this->identity['bucket'], rawurlencode($this->identity['object']));
-        $toSign = [
-            $options['method'],
-            $options['contentMd5'],
-            $options['contentType'],
-            $seconds,
-            implode("\n", $headers) . $resource,
-        ];
-
-        // NOTE: While in most cases `PHP_EOL` is preferable to a system-specific character,
-        // in this case `\n` is required.
-        $string = implode("\n", $toSign);
-        $signature = $this->signString($keyFile['private_key'], $string, $options['forceOpenssl']);
-        $encodedSignature = urlencode(base64_encode($signature));
-
-        $query = [];
-        $query[] = 'GoogleAccessId=' . $keyFile['client_email'];
-        $query[] = 'Expires=' . $seconds;
-        $query[] = 'Signature=' . $encodedSignature;
-
-        if ($options['contentType']) {
-            $query[] = 'response-content-type=' . urlencode($options['contentType']);
-        }
-
-        if ($options['responseDisposition']) {
-            $query[] = 'response-content-disposition=' . urlencode($options['responseDisposition']);
-        } elseif ($options['saveAsName']) {
-            $query[] = 'response-content-disposition=attachment;filename="' . urlencode($options['saveAsName']) . '"';
-        }
-
-        if ($options['responseType']) {
-            $query[] = 'response-content-type=' . urlencode($options['responseType']);
-        }
-
-        if ($this->identity['generation']) {
-            $query[] = 'generation=' . $this->identity['generation'];
-        }
-
-        $options['cname'] = trim($options['cname'], '/');
-        return $options['cname'] . $resource . '?' . implode('&', $query);
-    }
-
-    /**
-     * Create a Signed Upload URL for this object.
-     *
-     * This method differs from {@see Google\Cloud\Storage\StorageObject::signedUrl()}
-     * in that it allows you to initiate a new resumable upload session. This
-     * can be used to allow non-authenticated users to insert an object into a
-     * bucket.
-     *
-     * In order to upload data, a session URI must be
-     * obtained by sending an HTTP POST request to the URL returned from this
-     * method. See the [Cloud Storage Documentation](https://goo.gl/b1ZiZm) for
-     * more information.
-     *
-     * If you prefer to skip this initial step, you may find
-     * {@see Google\Cloud\Storage\StorageObject::beginSignedUploadSession()} to
-     * fit your needs. Note that `beginSignedUploadSession()` cannot be used
-     * with Google Cloud PHP's Signed URL Uploader, and does not support a
-     * configurable expiration date.
-     *
-     * Example:
-     * ```
-     * $timestamp = new Timestamp(new \DateTime('tomorrow'));
-     * $url = $object->signedUploadUrl($timestamp);
-     * ```
-     *
-     * @param Timestamp|\DateTimeInterface|int $expires Specifies when the URL
-     *        will expire. May provide an instance of {@see Google\Cloud\Core\Timestamp},
-     *        [http://php.net/datetimeimmutable](`\DateTimeImmutable`), or a
-     *        UNIX timestamp as an integer.
-     * @param array $options {
-     *     Configuration Options.
-     *
-     *     @type string $contentType If you provide this value, the client must
-     *           provide this HTTP header set to the same value.
-     *     @type string $contentMd5 The MD5 digest value in base64. If you
-     *           provide this, the client must provide this HTTP header with
-     *           this same value in its request. If provided, take care to
-     *           always provide this value as a base64 encoded string.
-     *     @type array $headers If these headers are used, the server will check
-     *           to make sure that the client provides matching values. Provide
-     *           headers as a key/value array, where the key is the header name,
-     *           and the value is an array of header values.
-     *     @type array $keyFile Keyfile data to use in place of the keyfile with
-     *           which the client was constructed. If `$options.keyFilePath` is
-     *           set, this option is ignored.
-     *     @type string $keyFilePath A path to a valid Keyfile to use in place
-     *           of the keyfile with which the client was constructed.
-     *     @type bool $forceOpenssl If true, OpenSSL will be used regardless of
-     *           whether phpseclib is available. **Defaults to** `false`.
-     * }
-     * @return string
-     */
-    public function signedUploadUrl($expires, array $options = [])
-    {
-        $options += [
-            'headers' => [],
-            'contentType' => null,
-            'contentMd5' => null,
-        ];
-
-        unset(
-            $options['cname'],
-            $options['saveAsName'],
-            $options['responseDisposition'],
-            $options['responseType']
-        );
-
-        $options['headers']['x-goog-resumable'] = ['start'];
-
-        return $this->signedUrl($expires, [
-            'method' => 'POST',
-            'allowPost' => true
-        ] + $options);
-    }
-
-    /**
-     * Create a signed URL upload session.
-     *
-     * The returned URL differs from the return value of
-     * {@see Google\Cloud\Storage\StorageObject::signedUploadUrl()} in that it
-     * is ready to accept upload data immediately via an HTTP PUT request.
-     * Because an upload session is created by the client, the expiration date
-     * is not configurable. The URL generated by this method is valid for one
-     * week.
-     *
-     * Example:
-     * ```
-     * $url = $object->beginSignedUploadSession();
-     * ```
-     *
-     * @see https://cloud.google.com/storage/docs/xml-api/resumable-upload#practices Resumable Upload Best Practices
-     *
-     * @param array $options {
-     *     Configuration Options.
-     *
-     *     @type string $contentType If you provide this value, the client must
-     *           provide this HTTP header set to the same value.
-     *     @type string $contentMd5 The MD5 digest value in base64. If you
-     *           provide this, the client must provide this HTTP header with
-     *           this same value in its request. If provided, take care to
-     *           always provide this value as a base64 encoded string.
-     *     @type array $headers If these headers are used, the server will check
-     *           to make sure that the client provides matching values. Provide
-     *           headers as a key/value array, where the key is the header name,
-     *           and the value is an array of header values.
-     *     @type array $keyFile Keyfile data to use in place of the keyfile with
-     *           which the client was constructed. If `$options.keyFilePath` is
-     *           set, this option is ignored.
-     *     @type string $keyFilePath A path to a valid Keyfile to use in place
-     *           of the keyfile with which the client was constructed.
-     *     @type bool $forceOpenssl If true, OpenSSL will be used regardless of
-     *           whether phpseclib is available. **Defaults to** `false`.
-     * }
-     * @return string
-     */
-    public function beginSignedUploadSession(array $options = [])
-    {
-        $timestamp = new \DateTimeImmutable('+1 minute');
-        $startUri = $this->signedUploadUrl($timestamp, $options);
-
-        $uploader = new SignedUrlUploader($this->connection->requestWrapper(), '', $startUri);
-
-        return $uploader->getResumeUri();
     }
 
     /**
@@ -991,7 +654,11 @@ class StorageObject
      */
     public function info(array $options = [])
     {
-        return $this->info ?: $this->reload($options);
+        if (!$this->info) {
+            $this->reload($options);
+        }
+
+        return $this->info;
     }
 
     /**
@@ -1009,14 +676,16 @@ class StorageObject
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type string $encryptionKey A base64 encoded AES-256 customer-supplied
-     *           encryption key. It will be neccesary to provide this when a key
-     *           was used during the object's creation.
-     *     @type string $encryptionKeySHA256 Base64 encoded SHA256 hash of the
-     *           customer-supplied encryption key. This value will be calculated
-     *           from the `encryptionKey` on your behalf if not provided, but
-     *           for best performance it is recommended to pass in a cached
-     *           version of the already calculated SHA.
+     *     @type string $encryptionKey An AES-256 customer-supplied encryption
+     *           key. It will be neccesary to provide this when a key was used
+     *           during the object's creation in order to retrieve the MD5 hash
+     *           and CRC32C checksum. If provided one must also include an
+     *           `encryptionKeySHA256`.
+     *     @type string $encryptionKeySHA256 The SHA256 hash of the
+     *           customer-supplied encryption key. It will be neccesary to
+     *           provide this when a key was used during the object's creation
+     *           in order to retrieve the MD5 hash and CRC32C checksum. If
+     *           provided one must also include an `encryptionKey`.
      *     @type string $ifGenerationMatch Makes the operation conditional on
      *           whether the object's current generation matches the given
      *           value.
@@ -1040,7 +709,7 @@ class StorageObject
             $this->formatEncryptionHeaders(
                 $options
                 + $this->encryptionData
-                + array_filter($this->identity)
+                + $this->identity
             )
         );
     }
@@ -1076,26 +745,6 @@ class StorageObject
     }
 
     /**
-     * Formats the object as a string in the following format:
-     * `gs://{bucket-name}/{object-name}`.
-     *
-     * Example:
-     * ```
-     * echo $object->gcsUri();
-     * ```
-     *
-     * @return string
-     */
-    public function gcsUri()
-    {
-        return sprintf(
-            'gs://%s/%s',
-            $this->identity['bucket'],
-            $this->identity['object']
-        );
-    }
-
-    /**
      * Formats a destination based request, such as copy or rewrite.
      *
      * @param string|Bucket $destination The destination bucket.
@@ -1122,8 +771,7 @@ class StorageObject
             'destinationPredefinedAcl' => $destAcl,
             'sourceBucket' => $this->identity['bucket'],
             'sourceObject' => $this->identity['object'],
-            'sourceGeneration' => $this->identity['generation'],
-            'userProject' => $this->identity['userProject'],
+            'sourceGeneration' => $this->identity['generation']
         ]) + $this->formatEncryptionHeaders($options + $this->encryptionData);
     }
 }

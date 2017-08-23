@@ -17,15 +17,14 @@
 
 namespace Google\Cloud\Translate\Connection;
 
-use Google\Cloud\Core\RequestBuilder;
-use Google\Cloud\Core\RequestWrapper;
-use Google\Cloud\Core\RestTrait;
-use Google\Cloud\Core\UriTrait;
-use Google\Cloud\Translate\TranslateClient;
+use Google\Cloud\RequestBuilder;
+use Google\Cloud\RequestWrapper;
+use Google\Cloud\RestTrait;
+use Google\Cloud\UriTrait;
 
 /**
  * Implementation of the
- * [Google Cloud Translation REST API](https://cloud.google.com/translation/docs/how-to).
+ * [Google Translate REST API](https://cloud.google.com/translate/docs/how-to).
  */
 class Rest implements ConnectionInterface
 {
@@ -39,14 +38,9 @@ class Rest implements ConnectionInterface
      */
     public function __construct(array $config = [])
     {
-        $config += [
-            'serviceDefinitionPath' => __DIR__ . '/ServiceDefinition/translate-v2.json',
-            'componentVersion' => TranslateClient::VERSION
-        ];
-
         $this->setRequestWrapper(new RequestWrapper($config));
         $this->setRequestBuilder(new RequestBuilder(
-            $config['serviceDefinitionPath'],
+            __DIR__ . '/ServiceDefinition/translate-v2.json',
             self::BASE_URI
         ));
     }
@@ -57,7 +51,7 @@ class Rest implements ConnectionInterface
      */
     public function listDetections(array $args = [])
     {
-        return $this->send('detections', 'detect', $args);
+        return $this->send('detections', 'list', $args);
     }
 
     /**
@@ -75,6 +69,6 @@ class Rest implements ConnectionInterface
      */
     public function listTranslations(array $args = [])
     {
-        return $this->send('translations', 'translate', $args);
+        return $this->send('translations', 'list', $args);
     }
 }

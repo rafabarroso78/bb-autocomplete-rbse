@@ -18,8 +18,7 @@
 namespace Google\Cloud\Translate\Connection;
 
 /**
- * Represents a connection to
- * [Google Cloud Translation](https://cloud.google.com/translation/).
+ * Represents a connection to [Translate](https://cloud.google.com/translate/).
  */
 interface ConnectionInterface
 {

@@ -17,8 +17,8 @@
 
 namespace Google\Cloud\BigQuery;
 
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
-use Google\Cloud\Core\Exception\NotFoundException;
 
 /**
  * [Jobs](https://cloud.google.com/bigquery/docs/reference/v2/jobs) are objects
@@ -28,7 +28,7 @@ use Google\Cloud\Core\Exception\NotFoundException;
 class Job
 {
     /**
-     * @var ConnectionInterface Represents a connection to BigQuery.
+     * @var ConnectionInterface $connection Represents a connection to BigQuery.
      */
     private $connection;
 
@@ -43,32 +43,20 @@ class Job
     private $info;
 
     /**
-     * @var ValueMapper $mapper Maps values between PHP and BigQuery.
-     */
-    private $mapper;
-
-    /**
      * @param ConnectionInterface $connection Represents a connection to
      *        BigQuery.
      * @param string $id The job's ID.
      * @param string $projectId The project's ID.
-     * @param ValueMapper $mapper Maps values between PHP and BigQuery.
      * @param array $info [optional] The job's metadata.
      */
-    public function __construct(
-        ConnectionInterface $connection,
-        $id,
-        $projectId,
-        ValueMapper $mapper,
-        array $info = []
-    ) {
+    public function __construct(ConnectionInterface $connection, $id, $projectId, array $info = [])
+    {
         $this->connection = $connection;
         $this->info = $info;
         $this->identity = [
             'jobId' => $id,
             'projectId' => $projectId
         ];
-        $this->mapper = $mapper;
     }
 
     /**
@@ -76,7 +64,7 @@ class Job
      *
      * Example:
      * ```
-     * echo $job->exists();
+     * $job->exists();
      * ```
      *
      * @return bool
@@ -125,6 +113,7 @@ class Job
      *
      * Example:
      * ```
+     * $job = $bigQuery->runQueryAsJob('SELECT * FROM [bigquery-public-data:usa_names.usa_1910_2013]');
      * $queryResults = $job->queryResults();
      * ```
      *
@@ -134,12 +123,12 @@ class Job
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type int $maxResults Maximum number of results to read per page.
+     *     @type int $maxResults Maximum number of results to read.
      *     @type int $startIndex Zero-based index of the starting row.
      *     @type int $timeoutMs How long to wait for the query to complete, in
      *           milliseconds. **Defaults to** `10000` milliseconds (10 seconds).
      * }
-     * @return QueryResults
+     * @return array
      */
     public function queryResults(array $options = [])
     {
@@ -150,8 +139,7 @@ class Job
             $this->identity['jobId'],
             $this->identity['projectId'],
             $response,
-            $options,
-            $this->mapper
+            $options
         );
     }
 
@@ -208,10 +196,10 @@ class Job
      *
      * Example:
      * ```
-     * echo $job->isComplete(); // false
+     * $job->isComplete(); // returns false
      * sleep(1); // let's wait for a moment...
      * $job->reload(); // execute a network request
-     * echo $job->isComplete(); // true
+     * $job->isComplete(); // true
      * ```
      *
      * @see https://cloud.google.com/bigquery/docs/reference/v2/jobs/get Jobs get API documentation.

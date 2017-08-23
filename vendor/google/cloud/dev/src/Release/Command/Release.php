@@ -17,34 +17,19 @@
 
 namespace Google\Cloud\Dev\Release\Command;
 
-use Google\Cloud\Dev\GetComponentsTrait;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use vierbergenlars\SemVer\version;
 
 class Release extends Command
 {
-    use GetComponentsTrait;
-
-    const COMPONENT_BASE = '%s/../src';
-    const DEFAULT_COMPONENT = 'google-cloud';
-    const DEFAULT_COMPONENT_COMPOSER = '%s/../composer.json';
-    const PATH_MANIFEST = '%s/../docs/manifest.json';
-    const PATH_SERVICE_BUILDER = '%s/../src/ServiceBuilder.php';
+    const PATH_MANIFEST = 'docs/manifest.json';
+    const PATH_SERVICE_BUILDER = 'src/ServiceBuilder.php';
 
     private $cliBasePath;
-
-    private $defaultClient;
-
-    private $manifest;
-
-    private $defaultComponentComposer;
-
-    private $components;
 
     private $allowedReleaseTypes = [
         'major', 'minor', 'patch'
@@ -54,11 +39,6 @@ class Release extends Command
     {
         $this->cliBasePath = $cliBasePath;
 
-        $this->defaultClient = sprintf(self::PATH_SERVICE_BUILDER, $cliBasePath);
-        $this->manifest = sprintf(self::PATH_MANIFEST, $cliBasePath);
-        $this->defaultComponentComposer = sprintf(self::DEFAULT_COMPONENT_COMPOSER, $cliBasePath);
-        $this->components = sprintf(self::COMPONENT_BASE, $cliBasePath);
-
         parent::__construct();
     }
 
@@ -66,31 +46,23 @@ class Release extends Command
     {
         $this->setName('release')
              ->setDescription('Prepares a new release')
-             ->addArgument('version', InputArgument::REQUIRED, 'The new version number.')
-             ->addOption(
-                'component',
-                'c',
-                InputOption::VALUE_REQUIRED,
-                'The component for which the version should be updated.',
-                self::DEFAULT_COMPONENT
-            );
+             ->addArgument('version', InputArgument::REQUIRED, 'The new version number');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $component = $this->getComponentComposer($input->getOption('component'));
-
         $version = $input->getArgument('version');
-
-        // If the version is one of "major", "minor" or "patch", determine the
-        // correct incrementation.
         if (in_array(strtolower($version), $this->allowedReleaseTypes)) {
-            $version = $this->getNextVersionName($version, $component);
+            $version = $this->getNextVersionName($version);
         }
 
         try {
             $validatedVersion = new version($version);
         } catch (\Exception $e) {
+            $validatedVersion = null;
+        }
+
+        if (is_null($validatedVersion)) {
             throw new RuntimeException(sprintf(
                 'Given version %s is not a valid version name',
                 $version
@@ -100,41 +72,18 @@ class Release extends Command
         $version = (string) $validatedVersion;
 
         $output->writeln(sprintf(
-            'Adding version %s to Documentation Manifest for component %s.',
-            $version,
-            $component['id']
-        ));
-
-        $this->addToComponentManifest($version, $component);
-
-        $output->writeln(sprintf(
-            'Setting component version constant to %s.',
+            'Adding version %s to Documentation Manifest.',
             $version
         ));
 
-        $this->updateComponentVersionConstant($version, $component);
+        $this->addToManifest($version);
+
         $output->writeln(sprintf(
-            'File %s VERSION constant updated to %s',
-            $component['entry'],
+            'Setting ServiceBuilder version constant to %s.',
             $version
         ));
 
-        if ($component['id'] !== 'google-cloud') {
-            $this->updateComponentVersionFile($version, $component);
-            $output->writeln(sprintf(
-                'Component %s VERSION file updated to %s',
-                $component['id'],
-                $version
-            ));
-
-            $this->updateComposerReplacesVersion($version, $component);
-
-            $output->writeln(sprintf(
-                'google-cloud composer replaces for component %s updated to version %s',
-                $component['id'],
-                $version
-            ));
-        }
+        $this->updateServiceBuilder($version);
 
         $output->writeln(sprintf(
             'Release %s generated!',
@@ -142,86 +91,64 @@ class Release extends Command
         ));
     }
 
-    private function getNextVersionName($type, array $component)
+    private function getNextVersionName($type)
     {
-        $manifest = $this->getComponentManifest($this->manifest, $component['id']);
-
-        if ($manifest['versions'][0] === 'master') {
-            $lastRelease = new version('0.0.0');
-        } else {
-            $lastRelease = new version($manifest['versions'][0]);
-        }
+        $manifest = $this->getManifest();
+        $lastRelease = new version($manifest['versions'][0]);
 
         return $lastRelease->inc($type);
     }
 
-    private function addToComponentManifest($version, array $component)
+    private function addToManifest($version)
     {
-        $manifest = $this->getManifest($this->manifest);
-        $index = $this->getManifestComponentModuleIndex($this->manifest, $manifest, $component['id']);
+        $manifest = $this->getManifest();
 
-        array_unshift($manifest['modules'][$index]['versions'], 'v'. $version);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('Could not decode manifest json');
+        }
+
+        array_unshift($manifest['versions'], 'v'. $version);
 
         $content = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ."\n";
-        $result = file_put_contents($this->manifest, $content);
+        $result = file_put_contents($this->getManifestPath(), $content);
 
         if (!$result) {
             throw new RuntimeException('File write failed');
         }
     }
 
-    private function updateComponentVersionConstant($version, array $component)
+    private function updateServiceBuilder($version)
     {
-        if (is_null($component['entry'])) {
-            return false;
-        }
-
-        $path = $this->cliBasePath .'/../'. $component['path'] .'/'. $component['entry'];
+        $path = $this->cliBasePath .'/../'. self::PATH_SERVICE_BUILDER;
         if (!file_exists($path)) {
-            throw new \RuntimeException(sprintf(
-                'Component entry file %s does not exist',
-                $path
-            ));
+            throw new RuntimeException('ServiceBuilder not found at '. $path);
         }
 
-        $entry = file_get_contents($path);
+        $sb = file_get_contents($path);
 
         $replacement = sprintf("const VERSION = '%s';", $version);
 
-        $entry = preg_replace("/const VERSION = [\'\\\"]([0-9.]{0,}|master)[\'\\\"]\;/", $replacement, $entry);
+        $sb = preg_replace("/const VERSION = '[0-9.]{0,}'\;/", $replacement, $sb);
 
-        $result = file_put_contents($path, $entry);
-
-        if (!$result) {
-            throw new RuntimeException('File write failed');
-        }
-
-        return true;
-    }
-
-    private function updateComponentVersionFile($version, array $component)
-    {
-        $path = $this->cliBasePath .'/../'. $component['path'] .'/VERSION';
-        $result = file_put_contents($path, $version);
+        $result = file_put_contents($path, $sb);
 
         if (!$result) {
             throw new RuntimeException('File write failed');
         }
-
-        return true;
     }
 
-    private function updateComposerReplacesVersion($version, array $component)
+    private function getManifest()
     {
-        $composer = $this->cliBasePath .'/../composer.json';
-        if (!file_exists($composer)) {
-            throw new \Exception('Invalid composer.json path');
+        $path = $this->getManifestPath();
+        if (!file_exists($path)) {
+            throw new RuntimeException('Manifest file not found at '. $path);
         }
 
-        $data = json_decode(file_get_contents($composer), true);
+        return json_decode(file_get_contents($path), true);
+    }
 
-        $data['replace'][$component['name']] = $version;
-
-        file_put_contents($composer, json_encode($data, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
+    private function getManifestPath()
+    {
+        return $this->cliBasePath .'/../'. self::PATH_MANIFEST;
     }
 }

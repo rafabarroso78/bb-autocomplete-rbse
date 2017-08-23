@@ -1,18 +1,16 @@
 <?php
 /*
- * Copyright 2017, Google Inc. All rights reserved.
+ * Copyright 2016 Google Inc. All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 /*
@@ -20,12 +18,6 @@
  * This file was generated from the file
  * https://github.com/google/googleapis/blob/master/google/logging/v2/logging_metrics.proto
  * and updates to that file get reflected here through a refresh process.
- *
- * EXPERIMENTAL: this client library class has not yet been declared beta. This class may change
- * more frequently than those which have been declared beta or 1.0, including changes which break
- * backwards compatibility.
- *
- * @experimental
  */
 
 namespace Google\Cloud\Logging\V2;
@@ -37,20 +29,16 @@ use Google\GAX\GrpcConstants;
 use Google\GAX\GrpcCredentialsHelper;
 use Google\GAX\PageStreamingDescriptor;
 use Google\GAX\PathTemplate;
-use Google\Logging\V2\CreateLogMetricRequest;
-use Google\Logging\V2\DeleteLogMetricRequest;
-use Google\Logging\V2\GetLogMetricRequest;
-use Google\Logging\V2\ListLogMetricsRequest;
-use Google\Logging\V2\LogMetric;
-use Google\Logging\V2\MetricsServiceV2GrpcClient;
-use Google\Logging\V2\UpdateLogMetricRequest;
+use google\logging\v2\CreateLogMetricRequest;
+use google\logging\v2\DeleteLogMetricRequest;
+use google\logging\v2\GetLogMetricRequest;
+use google\logging\v2\ListLogMetricsRequest;
+use google\logging\v2\LogMetric;
+use google\logging\v2\MetricsServiceV2Client as MetricsServiceV2GrpcClient;
+use google\logging\v2\UpdateLogMetricRequest;
 
 /**
  * Service Description: Service for configuring logs-based metrics.
- *
- * EXPERIMENTAL: this client library class has not yet been declared beta. This class may change
- * more frequently than those which have been declared beta or 1.0, including changes which break
- * backwards compatibility.
  *
  * This class provides the ability to make remote calls to the backing service through method
  * calls that map to API methods. Sample code to get started:
@@ -58,22 +46,14 @@ use Google\Logging\V2\UpdateLogMetricRequest;
  * ```
  * try {
  *     $metricsServiceV2Client = new MetricsServiceV2Client();
- *     $formattedParent = MetricsServiceV2Client::formatProjectName("[PROJECT]");
- *     // Iterate through all elements
- *     $pagedResponse = $metricsServiceV2Client->listLogMetrics($formattedParent);
- *     foreach ($pagedResponse->iterateAllElements() as $element) {
- *         // doSomethingWith($element);
- *     }
- *
- *     // OR iterate over pages of elements, with the maximum page size set to 5
- *     $pagedResponse = $metricsServiceV2Client->listLogMetrics($formattedParent, ['pageSize' => 5]);
- *     foreach ($pagedResponse->iteratePages() as $page) {
- *         foreach ($page as $element) {
- *             // doSomethingWith($element);
- *         }
+ *     $formattedParent = MetricsServiceV2Client::formatParentName("[PROJECT]");
+ *     foreach ($metricsServiceV2Client->listLogMetrics($formattedParent) as $element) {
+ *         // doThingsWith(element);
  *     }
  * } finally {
- *     $metricsServiceV2Client->close();
+ *     if (isset($metricsServiceV2Client)) {
+ *         $metricsServiceV2Client->close();
+ *     }
  * }
  * ```
  *
@@ -81,8 +61,6 @@ use Google\Logging\V2\UpdateLogMetricRequest;
  * with these names, this class includes a format method for each type of name, and additionally
  * a parse method to extract the individual identifiers contained within names that are
  * returned.
- *
- * @experimental
  */
 class MetricsServiceV2Client
 {
@@ -101,17 +79,11 @@ class MetricsServiceV2Client
      */
     const DEFAULT_TIMEOUT_MILLIS = 30000;
 
-    /**
-     * The name of the code generator, to be included in the agent header.
-     */
-    const CODEGEN_NAME = 'gapic';
+    const _GAX_VERSION = '0.1.0';
+    const _CODEGEN_NAME = 'GAPIC';
+    const _CODEGEN_VERSION = '0.0.0';
 
-    /**
-     * The code generator version, to be included in the agent header.
-     */
-    const CODEGEN_VERSION = '0.0.5';
-
-    private static $projectNameTemplate;
+    private static $parentNameTemplate;
     private static $metricNameTemplate;
 
     private $grpcCredentialsHelper;
@@ -122,16 +94,11 @@ class MetricsServiceV2Client
 
     /**
      * Formats a string containing the fully-qualified path to represent
-     * a project resource.
-     *
-     * @param string $project
-     *
-     * @return string The formatted project resource.
-     * @experimental
+     * a parent resource.
      */
-    public static function formatProjectName($project)
+    public static function formatParentName($project)
     {
-        return self::getProjectNameTemplate()->render([
+        return self::getParentNameTemplate()->render([
             'project' => $project,
         ]);
     }
@@ -139,12 +106,6 @@ class MetricsServiceV2Client
     /**
      * Formats a string containing the fully-qualified path to represent
      * a metric resource.
-     *
-     * @param string $project
-     * @param string $metric
-     *
-     * @return string The formatted metric resource.
-     * @experimental
      */
     public static function formatMetricName($project, $metric)
     {
@@ -156,26 +117,16 @@ class MetricsServiceV2Client
 
     /**
      * Parses the project from the given fully-qualified path which
-     * represents a project resource.
-     *
-     * @param string $projectName The fully-qualified project resource.
-     *
-     * @return string The extracted project value.
-     * @experimental
+     * represents a parent resource.
      */
-    public static function parseProjectFromProjectName($projectName)
+    public static function parseProjectFromParentName($parentName)
     {
-        return self::getProjectNameTemplate()->match($projectName)['project'];
+        return self::getParentNameTemplate()->match($parentName)['project'];
     }
 
     /**
      * Parses the project from the given fully-qualified path which
      * represents a metric resource.
-     *
-     * @param string $metricName The fully-qualified metric resource.
-     *
-     * @return string The extracted project value.
-     * @experimental
      */
     public static function parseProjectFromMetricName($metricName)
     {
@@ -185,24 +136,19 @@ class MetricsServiceV2Client
     /**
      * Parses the metric from the given fully-qualified path which
      * represents a metric resource.
-     *
-     * @param string $metricName The fully-qualified metric resource.
-     *
-     * @return string The extracted metric value.
-     * @experimental
      */
     public static function parseMetricFromMetricName($metricName)
     {
         return self::getMetricNameTemplate()->match($metricName)['metric'];
     }
 
-    private static function getProjectNameTemplate()
+    private static function getParentNameTemplate()
     {
-        if (self::$projectNameTemplate == null) {
-            self::$projectNameTemplate = new PathTemplate('projects/{project}');
+        if (self::$parentNameTemplate == null) {
+            self::$parentNameTemplate = new PathTemplate('projects/{project}');
         }
 
-        return self::$projectNameTemplate;
+        return self::$parentNameTemplate;
     }
 
     private static function getMetricNameTemplate()
@@ -218,12 +164,10 @@ class MetricsServiceV2Client
     {
         $listLogMetricsPageStreamingDescriptor =
                 new PageStreamingDescriptor([
-                    'requestPageTokenGetMethod' => 'getPageToken',
-                    'requestPageTokenSetMethod' => 'setPageToken',
-                    'requestPageSizeGetMethod' => 'getPageSize',
-                    'requestPageSizeSetMethod' => 'setPageSize',
-                    'responsePageTokenGetMethod' => 'getNextPageToken',
-                    'resourcesGetMethod' => 'getMetrics',
+                    'requestPageTokenField' => 'page_token',
+                    'requestPageSizeField' => 'page_size',
+                    'responsePageTokenField' => 'next_page_token',
+                    'resourceField' => 'metrics',
                 ]);
 
         $pageStreamingDescriptors = [
@@ -231,17 +175,6 @@ class MetricsServiceV2Client
         ];
 
         return $pageStreamingDescriptors;
-    }
-
-    private static function getGapicVersion()
-    {
-        if (file_exists(__DIR__.'/../VERSION')) {
-            return trim(file_get_contents(__DIR__.'/../VERSION'));
-        } elseif (class_exists('\Google\Cloud\ServiceBuilder')) {
-            return \Google\Cloud\ServiceBuilder::VERSION;
-        } else {
-            return;
-        }
     }
 
     // TODO(garrettjones): add channel (when supported in gRPC)
@@ -254,10 +187,10 @@ class MetricsServiceV2Client
      *     @type string $serviceAddress The domain name of the API remote host.
      *                                  Default 'logging.googleapis.com'.
      *     @type mixed $port The port on which to connect to the remote host. Default 443.
-     *     @type \Grpc\ChannelCredentials $sslCreds
+     *     @type Grpc\ChannelCredentials $sslCreds
      *           A `ChannelCredentials` for use with an SSL-enabled channel.
      *           Default: a credentials object returned from
-     *           \Grpc\ChannelCredentials::createSsl()
+     *           Grpc\ChannelCredentials::createSsl()
      *     @type array $scopes A string array of scopes to use when acquiring credentials.
      *                         Default the scopes for the Stackdriver Logging API.
      *     @type array $retryingOverride
@@ -269,37 +202,41 @@ class MetricsServiceV2Client
      *                              that don't use retries. For calls that use retries,
      *                              set the timeout in RetryOptions.
      *                              Default: 30000 (30 seconds)
-     *     @type \Google\Auth\CredentialsLoader $credentialsLoader
+     *     @type string $appName The codename of the calling service. Default 'gax'.
+     *     @type string $appVersion The version of the calling service.
+     *                              Default: the current version of GAX.
+     *     @type Google\Auth\CredentialsLoader $credentialsLoader
      *                              A CredentialsLoader object created using the
      *                              Google\Auth library.
      * }
-     * @experimental
      */
     public function __construct($options = [])
     {
+        $defaultScopes = [
+            'https://www.googleapis.com/auth/cloud-platform',
+            'https://www.googleapis.com/auth/cloud-platform.read-only',
+            'https://www.googleapis.com/auth/logging.admin',
+            'https://www.googleapis.com/auth/logging.read',
+            'https://www.googleapis.com/auth/logging.write',
+        ];
         $defaultOptions = [
             'serviceAddress' => self::SERVICE_ADDRESS,
             'port' => self::DEFAULT_SERVICE_PORT,
-            'scopes' => [
-                'https://www.googleapis.com/auth/cloud-platform',
-                'https://www.googleapis.com/auth/cloud-platform.read-only',
-                'https://www.googleapis.com/auth/logging.admin',
-                'https://www.googleapis.com/auth/logging.read',
-                'https://www.googleapis.com/auth/logging.write',
-            ],
+            'scopes' => $defaultScopes,
             'retryingOverride' => null,
             'timeoutMillis' => self::DEFAULT_TIMEOUT_MILLIS,
-            'libName' => null,
-            'libVersion' => null,
+            'appName' => 'gax',
+            'appVersion' => self::_GAX_VERSION,
         ];
         $options = array_merge($defaultOptions, $options);
 
-        $gapicVersion = $options['libVersion'] ?: self::getGapicVersion();
-
         $headerDescriptor = new AgentHeaderDescriptor([
-            'libName' => $options['libName'],
-            'libVersion' => $options['libVersion'],
-            'gapicVersion' => $gapicVersion,
+            'clientName' => $options['appName'],
+            'clientVersion' => $options['appVersion'],
+            'codeGenName' => self::_CODEGEN_NAME,
+            'codeGenVersion' => self::_CODEGEN_VERSION,
+            'gaxVersion' => self::_GAX_VERSION,
+            'phpVersion' => phpversion(),
         ]);
 
         $defaultDescriptors = ['headerDescriptor' => $headerDescriptor];
@@ -338,9 +275,6 @@ class MetricsServiceV2Client
         $createMetricsServiceV2StubFunction = function ($hostname, $opts) {
             return new MetricsServiceV2GrpcClient($hostname, $opts);
         };
-        if (array_key_exists('createMetricsServiceV2StubFunction', $options)) {
-            $createMetricsServiceV2StubFunction = $options['createMetricsServiceV2StubFunction'];
-        }
         $this->metricsServiceV2Stub = $this->grpcCredentialsHelper->createStub(
             $createMetricsServiceV2StubFunction,
             $options['serviceAddress'],
@@ -356,22 +290,14 @@ class MetricsServiceV2Client
      * ```
      * try {
      *     $metricsServiceV2Client = new MetricsServiceV2Client();
-     *     $formattedParent = MetricsServiceV2Client::formatProjectName("[PROJECT]");
-     *     // Iterate through all elements
-     *     $pagedResponse = $metricsServiceV2Client->listLogMetrics($formattedParent);
-     *     foreach ($pagedResponse->iterateAllElements() as $element) {
-     *         // doSomethingWith($element);
-     *     }
-     *
-     *     // OR iterate over pages of elements, with the maximum page size set to 5
-     *     $pagedResponse = $metricsServiceV2Client->listLogMetrics($formattedParent, ['pageSize' => 5]);
-     *     foreach ($pagedResponse->iteratePages() as $page) {
-     *         foreach ($page as $element) {
-     *             // doSomethingWith($element);
-     *         }
+     *     $formattedParent = MetricsServiceV2Client::formatParentName("[PROJECT]");
+     *     foreach ($metricsServiceV2Client->listLogMetrics($formattedParent) as $element) {
+     *         // doThingsWith(element);
      *     }
      * } finally {
-     *     $metricsServiceV2Client->close();
+     *     if (isset($metricsServiceV2Client)) {
+     *         $metricsServiceV2Client->close();
+     *     }
      * }
      * ```
      *
@@ -401,7 +327,6 @@ class MetricsServiceV2Client
      * @return \Google\GAX\PagedListResponse
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function listLogMetrics($parent, $optionalArgs = [])
     {
@@ -440,7 +365,9 @@ class MetricsServiceV2Client
      *     $formattedMetricName = MetricsServiceV2Client::formatMetricName("[PROJECT]", "[METRIC]");
      *     $response = $metricsServiceV2Client->getLogMetric($formattedMetricName);
      * } finally {
-     *     $metricsServiceV2Client->close();
+     *     if (isset($metricsServiceV2Client)) {
+     *         $metricsServiceV2Client->close();
+     *     }
      * }
      * ```
      *
@@ -458,10 +385,9 @@ class MetricsServiceV2Client
      *          is not set.
      * }
      *
-     * @return \Google\Logging\V2\LogMetric
+     * @return \google\logging\v2\LogMetric
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function getLogMetric($metricName, $optionalArgs = [])
     {
@@ -491,11 +417,13 @@ class MetricsServiceV2Client
      * ```
      * try {
      *     $metricsServiceV2Client = new MetricsServiceV2Client();
-     *     $formattedParent = MetricsServiceV2Client::formatProjectName("[PROJECT]");
+     *     $formattedParent = MetricsServiceV2Client::formatParentName("[PROJECT]");
      *     $metric = new LogMetric();
      *     $response = $metricsServiceV2Client->createLogMetric($formattedParent, $metric);
      * } finally {
-     *     $metricsServiceV2Client->close();
+     *     if (isset($metricsServiceV2Client)) {
+     *         $metricsServiceV2Client->close();
+     *     }
      * }
      * ```
      *
@@ -517,10 +445,9 @@ class MetricsServiceV2Client
      *          is not set.
      * }
      *
-     * @return \Google\Logging\V2\LogMetric
+     * @return \google\logging\v2\LogMetric
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function createLogMetric($parent, $metric, $optionalArgs = [])
     {
@@ -555,7 +482,9 @@ class MetricsServiceV2Client
      *     $metric = new LogMetric();
      *     $response = $metricsServiceV2Client->updateLogMetric($formattedMetricName, $metric);
      * } finally {
-     *     $metricsServiceV2Client->close();
+     *     if (isset($metricsServiceV2Client)) {
+     *         $metricsServiceV2Client->close();
+     *     }
      * }
      * ```
      *
@@ -578,10 +507,9 @@ class MetricsServiceV2Client
      *          is not set.
      * }
      *
-     * @return \Google\Logging\V2\LogMetric
+     * @return \google\logging\v2\LogMetric
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function updateLogMetric($metricName, $metric, $optionalArgs = [])
     {
@@ -615,7 +543,9 @@ class MetricsServiceV2Client
      *     $formattedMetricName = MetricsServiceV2Client::formatMetricName("[PROJECT]", "[METRIC]");
      *     $metricsServiceV2Client->deleteLogMetric($formattedMetricName);
      * } finally {
-     *     $metricsServiceV2Client->close();
+     *     if (isset($metricsServiceV2Client)) {
+     *         $metricsServiceV2Client->close();
+     *     }
      * }
      * ```
      *
@@ -634,7 +564,6 @@ class MetricsServiceV2Client
      * }
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function deleteLogMetric($metricName, $optionalArgs = [])
     {
@@ -660,8 +589,6 @@ class MetricsServiceV2Client
     /**
      * Initiates an orderly shutdown in which preexisting calls continue but new
      * calls are immediately cancelled.
-     *
-     * @experimental
      */
     public function close()
     {

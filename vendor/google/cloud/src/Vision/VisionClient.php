@@ -17,21 +17,29 @@
 
 namespace Google\Cloud\Vision;
 
-use Google\Cloud\Core\ClientTrait;
-use Google\Cloud\Core\ValidateTrait;
-use Google\Cloud\Storage\StorageObject;
+use Google\Cloud\ClientTrait;
+use Google\Cloud\ValidateTrait;
 use Google\Cloud\Vision\Connection\Rest;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
- * Google Cloud Vision allows you to understand the content of an image,
+ * Google Cloud Vision client. Allows you to understand the content of an image,
  * classify images into categories, detect text, objects, faces and more. Find
- * more information at the
+ * more information at
  * [Google Cloud Vision docs](https://cloud.google.com/vision/docs/).
  *
  * Example:
  * ```
+ * use Google\Cloud\ServiceBuilder;
+ *
+ * $cloud = new ServiceBuilder();
+ *
+ * $vision = $cloud->vision();
+ * ```
+ *
+ * ```
+ * // VisionClient can be instantiated directly.
  * use Google\Cloud\Vision\VisionClient;
  *
  * $vision = new VisionClient();
@@ -41,8 +49,6 @@ class VisionClient
 {
     use ClientTrait;
     use ValidateTrait;
-
-    const VERSION = '0.4.0';
 
     const FULL_CONTROL_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 
@@ -65,9 +71,9 @@ class VisionClient
      *     @type callable $authHttpHandler A handler used to deliver Psr7
      *           requests specifically for authentication.
      *     @type callable $httpHandler A handler used to deliver Psr7 requests.
-     *     @type array $keyFile The contents of the service account credentials
-     *           .json file retrieved from the Google Developer's Console.
-     *           Ex: `json_decode(file_get_contents($path), true)`.
+     *     @type string $keyFile The contents of the service account
+     *           credentials .json file retrieved from the Google Developers
+     *           Console.
      *     @type string $keyFilePath The full path to your service account
      *           credentials .json file retrieved from the Google Developers
      *           Console.
@@ -75,7 +81,7 @@ class VisionClient
      *           **Defaults to** `3`.
      *     @type array $scopes Scopes to be used for the request.
      * }
-     * @throws Google\Cloud\Core\Exception\GoogleException
+     * @throws Google\Cloud\Exception\GoogleException
      */
     public function __construct(array $config = [])
     {
@@ -104,7 +110,7 @@ class VisionClient
      *
      * Example:
      * ```
-     * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
+     * $imageResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
      *
      * $image = $vision->image($imageResource, [
      *     'FACE_DETECTION'
@@ -114,7 +120,7 @@ class VisionClient
      * ```
      * // Setting maxResults for a feature
      *
-     * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
+     * $imageResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
      *
      * $image = $vision->image($imageResource, [
      *     'FACE_DETECTION'
@@ -122,13 +128,13 @@ class VisionClient
      *     'maxResults' => [
      *         'FACE_DETECTION' => 1
      *     ]
-     * ]);
+     * ])
      * ```
      *
      * @param  resource|string|StorageObject $image An image to configure with
      *         the given settings. This parameter will accept a resource, a
-     *         string of bytes, the URI of an image in a publicly-accessible
-     *         web location, or an instance of {@see Google\Cloud\Storage\StorageObject}.
+     *         string of bytes, or an instance of
+     *         {@see Google\Cloud\Storage\StorageObject}.
      * @param  array $features A list of cloud vision
      *         [features](https://cloud.google.com/vision/reference/rest/v1/images/annotate#type)
      *         to apply to the image.
@@ -163,8 +169,8 @@ class VisionClient
      * // In the example below, both images will have the same settings applied.
      * // They will both run face detection and return up to 10 results.
      *
-     * $familyPhotoResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
-     * $weddingPhotoResource = fopen(__DIR__ . '/assets/wedding-photo.jpg', 'r');
+     * $familyPhotoResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
+     * $weddingPhotoResource = fopen(__DIR__ .'/assets/wedding-photo.jpg', 'r');
      *
      * $images = $vision->images([$familyPhotoResource, $weddingPhotoResource], [
      *     'FACE_DETECTION'
@@ -177,8 +183,7 @@ class VisionClient
      *
      * @param  resource[]|string[]|StorageObject[] $images An array of images
      *         to configure with the given settings. Each member of the set can
-     *         be a resource, a string of bytes, the URI of an image in a
-     *         publicly-accessible web location, or an instance of
+     *         be a resource, a string of bytes, or an instance of
      *         {@see Google\Cloud\Storage\StorageObject}.
      * @param  array $features A list of cloud vision features to apply to each image.
      * @param  array $options See {@see Google\Cloud\Vision\Image::__construct()} for
@@ -201,7 +206,7 @@ class VisionClient
      *
      * Example:
      * ```
-     * $familyPhotoResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
+     * $familyPhotoResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
      *
      * $image = $vision->image($familyPhotoResource, [
      *     'FACE_DETECTION'
@@ -209,8 +214,6 @@ class VisionClient
      *
      * $result = $vision->annotate($image);
      * ```
-     *
-     * @see https://cloud.google.com/vision/docs/reference/rest/v1/images/annotate Annotate API documentation
      *
      * @param  Image $image The image to annotate
      * @param  array $options Configuration options
@@ -229,21 +232,18 @@ class VisionClient
      * ```
      * $images = [];
      *
-     * $familyPhotoResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
-     * $eiffelTowerResource = fopen(__DIR__ . '/assets/eiffel-tower.jpg', 'r');
-     *
+     * $familyPhotoResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
      * $images[] = $vision->image($familyPhotoResource, [
      *     'FACE_DETECTION'
      * ]);
      *
+     * $eiffelTowerResource = fopen(__DIR__ .'/assets/eiffel-tower.jpg', 'r');
      * $images[] = $vision->image($eiffelTowerResource, [
      *     'LANDMARK_DETECTION'
      * ]);
      *
      * $result = $vision->annotateBatch($images);
      * ```
-     *
-     * @see https://cloud.google.com/vision/docs/reference/rest/v1/images/annotate Annotate API documentation
      *
      * @param  Image[] $images An array consisting of instances of
      *         {@see Google\Cloud\Vision\Image}.

@@ -17,9 +17,6 @@
 
 namespace Google\Cloud\Tests\System\Logging;
 
-/**
- * @group logging
- */
 class ManageMetricsTest extends LoggingTestCase
 {
     /**
@@ -32,7 +29,7 @@ class ManageMetricsTest extends LoggingTestCase
         $metric = $client->createMetric($name, 'severity >= DEBUG', [
             'description' => 'A description.'
         ]);
-        self::$deletionQueue->add($metric);
+        self::$deletionQueue[] = $metric;
 
         $metrics = iterator_to_array($client->metrics());
 
@@ -58,7 +55,7 @@ class ManageMetricsTest extends LoggingTestCase
         $this->assertFalse($client->metric($name)->exists());
 
         $metric = $client->createMetric($name, $filter, $options);
-        self::$deletionQueue->add($metric);
+        self::$deletionQueue[] = $metric;
 
         $this->assertTrue($client->metric($name)->exists());
         $this->assertEquals($filter, $metric->info()['filter']);
@@ -78,7 +75,7 @@ class ManageMetricsTest extends LoggingTestCase
         $metric = $client->createMetric($name, 'severity >= DEBUG', [
             'description' => 'A description.',
         ]);
-        self::$deletionQueue->add($metric);
+        self::$deletionQueue[] = $metric;
 
         $info = $metric->update($updateOptions);
 

@@ -17,13 +17,14 @@
 
 namespace Google\Cloud\Tests\System\PubSub;
 
+use Google\Cloud\ExponentialBackoff;
 use Google\Cloud\PubSub\PubSubClient;
-use Google\Cloud\Tests\System\SystemTestCase;
 
-class PubSubTestCase extends SystemTestCase
+class PubSubTestCase extends \PHPUnit_Framework_TestCase
 {
     const TESTING_PREFIX = 'gcloud_testing_';
 
+    protected static $deletionQueue = [];
     protected static $grpcClient;
     protected static $restClient;
     protected static $topic;
@@ -55,6 +56,17 @@ class PubSubTestCase extends SystemTestCase
             'transport' => 'grpc'
         ]);
         self::$hasSetUp = true;
+    }
+
+    public static function tearDownFixtures()
+    {
+        $backoff = new ExponentialBackoff(8);
+
+        foreach (self::$deletionQueue as $item) {
+            $backoff->execute(function () use ($item) {
+                $item->delete();
+            });
+        }
     }
 }
 

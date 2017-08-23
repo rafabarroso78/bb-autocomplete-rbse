@@ -36,66 +36,53 @@ use InvalidArgumentException;
  * combined size of all images in a request. Reducing your file size can
  * significantly improve throughput; however, be careful not to reduce image
  * quality in the process. See
- * [Best Practices - Image Sizing](https://cloud.google.com/vision/docs/best-practices#image_sizing)
+ * [Best Practices - Image Sizing](https://cloud.google.com/vision/docs/image-best-practices#image_sizing)
  * for current file size limits.
  *
  * Example:
  * ```
- * //[snippet=default]
- * use Google\Cloud\Vision\VisionClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $vision = new VisionClient();
+ * $cloud = new ServiceBuilder();
+ * $vision = $cloud->vision();
  *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
+ * $imageResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
  * $image = $vision->image($imageResource, [
  *     'FACE_DETECTION'
  * ]);
  * ```
  *
  * ```
- * //[snippet=direct]
  * // Images can be directly instantiated.
  * use Google\Cloud\Vision\Image;
  *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
+ * $imageResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
  * $image = new Image($imageResource, [
  *     'FACE_DETECTION'
  * ]);
  * ```
  *
  * ```
- * //[snippet=string]
  * // Image data can be given as a string
- *
- * use Google\Cloud\Vision\Image;
- *
- * $imageData = file_get_contents(__DIR__ .'/assets/family-photo.jpg');
- * $image = new Image($imageData, [
+ * $fileContents = file_get_contents(__DIR__ .'/assets/family-photo.jpg');
+ * $image = $vision->image($fileContents, [
  *    'FACE_DETECTION'
  * ]);
  * ```
  *
  * ```
- * //[snippet=gcs]
  * // Files stored in Google Cloud Storage can be used.
- * use Google\Cloud\Storage\StorageClient;
- * use Google\Cloud\Vision\Image;
- *
- * $storage = new StorageClient();
- * $file = $storage->bucket('my-test-bucket')->object('family-photo.jpg');
- * $image = new Image($file, [
+ * $file = $cloud->storage()->bucket('my-test-bucket')->object('family-photo.jpg');
+ * $image = $vision->image($file, [
  *     'FACE_DETECTION'
  * ]);
  * ```
  *
  * ```
- * //[snippet=max]
  * // This example sets a maximum results limit on one feature and provides some image context.
  *
- * use Google\Cloud\Vision\Image;
- *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
- * $image = new Image($imageResource, [
+ * $imageResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
+ * $image = $vision->image($imageResource, [
  *     'FACE_DETECTION',
  *     'LOGO_DETECTION'
  * ], [
@@ -118,34 +105,26 @@ use InvalidArgumentException;
  * ```
  *
  * ```
- * //[snippet=shortcut]
  * // The client library also offers shortcut names which can be used in place of the longer feature names.
- *
- * use Google\Cloud\Vision\Image;
- *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
  * $image = new Image($imageResource, [
  *     'faces',          // Corresponds to `FACE_DETECTION`
  *     'landmarks',      // Corresponds to `LANDMARK_DETECTION`
  *     'logos',          // Corresponds to `LOGO_DETECTION`
  *     'labels',         // Corresponds to `LABEL_DETECTION`
- *     'text',           // Corresponds to `TEXT_DETECTION`,
- *     'document',       // Corresponds to `DOCUMENT_TEXT_DETECTION`
+ *     'text',           // Corresponds to `TEXT_DETECTION`
  *     'safeSearch',     // Corresponds to `SAFE_SEARCH_DETECTION`
- *     'imageProperties',// Corresponds to `IMAGE_PROPERTIES`
- *     'crop',           // Corresponds to `CROP_HINTS`
- *     'web'             // Corresponds to `WEB_DETECTION`
+ *     'imageProperties'  // Corresponds to `IMAGE_PROPERTIES`
  * ]);
  * ```
  *
- * @see https://cloud.google.com/vision/docs/best-practices Best Practices
+ * @see https://cloud.google.com/vision/docs/image-best-practices Best Practices
  * @see https://cloud.google.com/vision/docs/pricing Pricing
  */
 class Image
 {
     const TYPE_BYTES = 'bytes';
+    const TYPE_STORAGE = 'storage';
     const TYPE_STRING = 'string';
-    const TYPE_URI = 'uri';
 
     /**
      * @var mixed
@@ -169,31 +148,16 @@ class Image
 
     /**
      * A map of short names to identifiers recognized by Cloud Vision.
-     *
      * @var array
      */
     private $featureShortNames = [
-        'faces'           => 'FACE_DETECTION',
-        'landmarks'       => 'LANDMARK_DETECTION',
-        'logos'           => 'LOGO_DETECTION',
-        'labels'          => 'LABEL_DETECTION',
-        'text'            => 'TEXT_DETECTION',
-        'document'        => 'DOCUMENT_TEXT_DETECTION',
-        'safeSearch'      => 'SAFE_SEARCH_DETECTION',
-        'imageProperties' => 'IMAGE_PROPERTIES',
-        'crop'            => 'CROP_HINTS',
-        'web'             => 'WEB_DETECTION'
-    ];
-
-    /**
-     * A list of allowed url schemes.
-     *
-     * @var array
-     */
-    private $urlSchemes = [
-        'http',
-        'https',
-        'gs'
+        'faces'      => 'FACE_DETECTION',
+        'landmarks'  => 'LANDMARK_DETECTION',
+        'logos'      => 'LOGO_DETECTION',
+        'labels'     => 'LABEL_DETECTION',
+        'text'       => 'TEXT_DETECTION',
+        'safeSearch' => 'SAFE_SEARCH_DETECTION',
+        'imageProperties' => 'IMAGE_PROPERTIES'
     ];
 
     /**
@@ -201,15 +165,15 @@ class Image
      *
      * @param  resource|string|StorageObject $image An image to configure with
      *         the given settings. This parameter will accept a resource, a
-     *         string of bytes, the URI of an image in a publicly-accessible
-     *         web location, or an instance of {@see Google\Cloud\Storage\StorageObject}.
+     *         string of bytes, or an instance of
+     *         {@see Google\Cloud\Storage\StorageObject}.
      * @param  array $features A list of cloud vision
      *         [features](https://cloud.google.com/vision/reference/rest/v1/images/annotate#type)
      *         to apply to the image. Google Cloud Platform Client Library provides a set of abbreviated
      *         names which can be used in the interest of brevity in place of
      *         the names offered by the cloud vision service. These names are
-     *         `faces`, `landmarks`, `logos`, `labels`, `text`, `document`,
-     *         `safeSearch`, `imageProperties`, `crop`, and `web`.
+     *         `faces`, `landmarks`, `logos`, `labels`, `text`, `safeSearch`
+     *         and `imageProperties`.
      * @param  array $options {
      *     Configuration Options
      *
@@ -236,21 +200,22 @@ class Image
 
         $this->features = $this->normalizeFeatures($features);
 
-        $this->image = $image;
-        if (is_string($image) && in_array(parse_url($image, PHP_URL_SCHEME), $this->urlSchemes)) {
-            $this->type = self::TYPE_URI;
+        if ($image instanceof StorageObject) {
+            $identity = $image->identity();
+            $uri = sprintf('gs://%s/%s', $identity['bucket'], $identity['object']);
+
+            $this->type = self::TYPE_STORAGE;
+            $this->image = $uri;
         } elseif (is_string($image)) {
             $this->type = self::TYPE_STRING;
-        } elseif ($image instanceof StorageObject) {
-            $this->type = self::TYPE_URI;
-            $this->image = $image->gcsUri();
+            $this->image = $image;
         } elseif (is_resource($image)) {
             $this->type = self::TYPE_BYTES;
             $this->image = Psr7\stream_for($image);
         } else {
             throw new InvalidArgumentException(
                 'Given image is not valid. ' .
-                'Image must be a string of bytes, a google storage object, a valid image URI, or a resource.'
+                'Image must be a string of bytes, a google storage object, or a resource.'
             );
         }
     }
@@ -263,10 +228,8 @@ class Image
      *
      * Example:
      * ```
-     * use Google\Cloud\Vision\Image;
-     *
-     * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
-     * $image = new Image($imageResource, [
+     * $imageResource = fopen(__DIR__ .'/assets/family-photo.jpg', 'r');
+     * $image = $vision->image($fileResource, [
      *     'FACE_DETECTION'
      * ]);
      *
@@ -319,7 +282,7 @@ class Image
 
         return [
             'source' => [
-                'imageUri' => $this->image
+                'gcsImageUri' => $this->image
             ]
         ];
     }

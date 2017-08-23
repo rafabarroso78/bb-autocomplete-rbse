@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2017 Google Inc. All Rights Reserved.
+ * Copyright 2016 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,8 @@
 
 namespace Google\Cloud\PubSub;
 
-use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\Exception\NotFoundException;
-use Google\Cloud\Core\Iam\Iam;
-use Google\Cloud\Core\Iterator\ItemIterator;
-use Google\Cloud\Core\Iterator\PageIterator;
+use Google\Cloud\Iam\Iam;
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\PubSub\Connection\ConnectionInterface;
 use Google\Cloud\PubSub\Connection\IamTopic;
 use InvalidArgumentException;
@@ -31,20 +28,21 @@ use InvalidArgumentException;
  *
  * Example:
  * ```
- * use Google\Cloud\PubSub\PubSubClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $pubsub = new PubSubClient();
- * $topic = $pubsub->topic('my-new-topic');
+ * $client = new ServiceBuilder();
+ *
+ * $pubsub = $client->pubsub();
+ * $topic = $pubsub->topic('my-topic-name');
  * ```
  *
  * ```
  * // You can also pass a fully-qualified topic name:
- * $topic = $pubsub->topic('projects/my-awesome-project/topics/my-new-topic');
+ * $topic = $pubsub->topic('projects/my-awesome-project/topics/my-topic-name');
  * ```
  */
 class Topic
 {
-    use ArrayTrait;
     use ResourceNameTrait;
 
     /**
@@ -78,11 +76,6 @@ class Topic
     private $iam;
 
     /**
-     * @var array
-     */
-    private $clientConfig;
-
-    /**
      * Create a PubSub topic.
      *
      * @param ConnectionInterface $connection A connection to the Google Cloud
@@ -91,26 +84,18 @@ class Topic
      * @param string $name The topic name
      * @param bool $encode Whether messages should be base64 encoded.
      * @param array $info [optional] A [Topic](https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics)
-     * @param array $clientConfig [optional] Configuration options for the
-     *        PubSub client used to handle processing of batch items through the
-     *        daemon. For valid options please see
-     *        {@see \Google\Cloud\PubSub\PubSubClient::__construct()}.
-     *        **Defaults to** the options provided to the PubSub client
-     *        associated with this instance.
      */
     public function __construct(
         ConnectionInterface $connection,
         $projectId,
         $name,
         $encode,
-        array $info = [],
-        array $clientConfig = []
+        array $info = null
     ) {
         $this->connection = $connection;
         $this->projectId = $projectId;
         $this->encode = (bool) $encode;
         $this->info = $info;
-        $this->clientConfig = $clientConfig;
 
         // Accept either a simple name or a fully-qualified name.
         if ($this->isFullyQualifiedName('topic', $name)) {
@@ -118,6 +103,9 @@ class Topic
         } else {
             $this->name = $this->formatName('topic', $name, $projectId);
         }
+
+        $iamConnection = new IamTopic($this->connection);
+        $this->iam = new Iam($iamConnection, $this->name);
     }
 
     /**
@@ -140,7 +128,9 @@ class Topic
      *
      * Example:
      * ```
-     * $topicInfo = $topic->create();
+     * if ($topic->create()) {
+     *     echo 'Topic Created!';
+     * }
      * ```
      *
      * @see https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics/create Create Topic
@@ -187,7 +177,7 @@ class Topic
      * Example:
      * ```
      * if ($topic->exists()) {
-     *     echo 'Topic exists';
+     *     // do stuff
      * }
      * ```
      *
@@ -219,7 +209,7 @@ class Topic
      * Example:
      * ```
      * $info = $topic->info();
-     * echo $info['name']; // projects/my-awesome-project/topics/my-new-topic
+     * echo $info['name']; // projects/my-awesome-project/topics/my-topic-name
      * ```
      *
      * @see https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics/get Get Topic
@@ -254,7 +244,7 @@ class Topic
      * ```
      * $topic->reload();
      * $info = $topic->info();
-     * echo $info['name']; // projects/my-awesome-project/topics/my-new-topic
+     * echo $info['name']; // projects/my-awesome-project/topics/my-topic-name
      * ```
      *
      * @see https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics/get Get Topic
@@ -281,7 +271,7 @@ class Topic
      * $topic->publish([
      *     'data' => 'New User Registered',
      *     'attributes' => [
-     *         'id' => '1',
+     *         'id' => 1,
      *         'userName' => 'John',
      *         'location' => 'Detroit'
      *     ]
@@ -290,7 +280,7 @@ class Topic
      *
      * @see https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.topics/publish Publish Message
      *
-     * @param array $message [Message Format](https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage).
+     * @param array $message [Message Format](https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage)
      * @param array $options [optional] Configuration Options
      * @return array A list of message IDs
      */
@@ -308,14 +298,14 @@ class Topic
      *     [
      *         'data' => 'New User Registered',
      *         'attributes' => [
-     *             'id' => '1',
+     *             'id' => 1,
      *             'userName' => 'John',
      *             'location' => 'Detroit'
      *         ]
      *     ], [
      *         'data' => 'New User Registered',
      *         'attributes' => [
-     *             'id' => '2',
+     *             'id' => 2,
      *             'userName' => 'Steve',
      *             'location' => 'Mountain View'
      *         ]
@@ -327,6 +317,10 @@ class Topic
      *
      * @param array $messages A list of messages. Each message must be in the correct
      *        [Message Format](https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage).
+     *        If provided, $data will be base64 encoded before being published,
+     *        unless `$options['encode']` is set to false. (See below for more
+     *        information.)
+     * }
      * @param array $options [optional] Configuration Options
      * @return array A list of message IDs.
      */
@@ -343,68 +337,11 @@ class Topic
     }
 
     /**
-     * Push a message into a batch queue, to be processed at a later point.
-     *
-     * Example:
-     * ```
-     * $topic->batchPublisher()
-     *     ->publish([
-     *         'data' => 'New User Registered',
-     *         'attributes' => [
-     *             'id' => '2',
-     *             'userName' => 'Dave',
-     *             'location' => 'Detroit'
-     *         ]
-     *     ]);
-     * ```
-     *
-     * @param array $options [optional] {
-     *     Configuration options.
-     *
-     *     @type bool $debugOutput Whether or not to output debug information.
-     *           Please note debug output currently only applies in CLI based
-     *           applications. **Defaults to** `false`.
-     *     @type array $batchOptions A set of options for a BatchJob.
-     *           {@see \Google\Cloud\Core\Batch\BatchJob::__construct()} for
-     *           more details.
-     *           **Defaults to** ['batchSize' => 1000,
-     *                            'callPeriod' => 2.0,
-     *                            'workerNum' => 2].
-     *     @type array $clientConfig Configuration options for the PubSub client
-     *           used to handle processing of batch items. For valid options
-     *           please see
-     *           {@see \Google\Cloud\PubSub\PubSubClient::__construct()}.
-     *           **Defaults to** the options provided to the client associated
-     *           with the current `Topic` instance.
-     *     @type BatchRunner $batchRunner A BatchRunner object. Mainly used for
-     *           the tests to inject a mock. **Defaults to** a newly created
-     *           BatchRunner.
-     *     @type string $identifier An identifier for the batch job.
-     *           **Defaults to** `pubsub-topic-{topic-name}`.
-     *           Example: `pubsub-topic-mytopic`.
-     * }
-     * @return BatchPublisher
-     * @experimental The experimental flag means that while we believe this method
-     *      or class is ready for use, it may change before release in backwards-
-     *      incompatible ways. Please use with caution, and test thoroughly when
-     *      upgrading.
-     */
-    public function batchPublisher(array $options = [])
-    {
-        return new BatchPublisher(
-            $this->name,
-            $options + [
-                'clientConfig' => $this->clientConfig
-            ]
-        );
-    }
-
-    /**
      * Create a subscription to the topic.
      *
      * Example:
      * ```
-     * $subscription = $topic->subscribe('my-new-subscription');
+     * $topic->subscribe('my-new-subscription');
      * ```
      *
      * @see https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.subscriptions/create Create Subscription
@@ -429,7 +366,7 @@ class Topic
      *
      * Example:
      * ```
-     * $subscription = $topic->subscription('my-new-subscription');
+     * $topic->subscribe('my-new-subscription');
      * ```
      *
      * @param string $name The subscription name
@@ -447,7 +384,7 @@ class Topic
      * ```
      * $subscriptions = $topic->subscriptions();
      * foreach ($subscriptions as $subscription) {
-     *     echo $subscription->name();
+     *     var_dump($subscription->info());
      * }
      * ```
      *
@@ -459,30 +396,27 @@ class Topic
      *     Configuration Options
      *
      *     @type int $pageSize Maximum number of subscriptions to return.
-     *     @type int $resultLimit Limit the number of results returned in total.
-     *           **Defaults to** `0` (return all results).
-     *     @type string $pageToken A previously-returned page token used to
-     *           resume the loading of results from a specific point.
      * }
-     * @return ItemIterator<Google\Cloud\PubSub\Subscription>
+     * @return \Generator<Google\Cloud\PubSub\Subscription>
      */
     public function subscriptions(array $options = [])
     {
-        $resultLimit = $this->pluck('resultLimit', $options, false);
+        $options['pageToken'] = null;
 
-        return new ItemIterator(
-            new PageIterator(
-                function ($subscription) {
-                    return $this->subscriptionFactory($subscription);
-                },
-                [$this->connection, 'listSubscriptionsByTopic'],
-                $options + ['topic' => $this->name],
-                [
-                    'itemsKey' => 'subscriptions',
-                    'resultLimit' => $resultLimit
-                ]
-            )
-        );
+        do {
+            $response = $this->connection->listSubscriptionsByTopic($options + [
+                'topic' => $this->name
+            ]);
+
+            foreach ($response['subscriptions'] as $subscription) {
+                yield $this->subscriptionFactory($subscription);
+            }
+
+            // If there's a page token, we'll request the next page.
+            $options['pageToken'] = isset($response['nextPageToken'])
+                ? $response['nextPageToken']
+                : null;
+        } while ($options['pageToken']);
     }
 
     /**
@@ -490,7 +424,7 @@ class Topic
      *
      * Example:
      * ```
-     * $iam = $topic->iam();
+     * $currentPolicy = $topic->iam()->policy();
      * ```
      *
      * @codingStandardsIgnoreStart
@@ -504,17 +438,11 @@ class Topic
      */
     public function iam()
     {
-        if (!$this->iam) {
-            $iamConnection = new IamTopic($this->connection);
-            $this->iam = new Iam($iamConnection, $this->name);
-        }
-
         return $this->iam;
     }
 
     /**
      * Present a nicer debug result to people using php 5.6 or greater.
-     *
      * @return array
      * @codeCoverageIgnore
      * @access private
@@ -532,7 +460,6 @@ class Topic
     /**
      * Ensure that the message is in a correct format,
      * base64_encode the data, and error if the input is too wrong to proceed.
-     *
      * @param  array $message
      * @return array The message data
      * @throws \InvalidArgumentException
@@ -564,7 +491,7 @@ class Topic
      * @return Subscription
      * @codingStandardsIgnoreEnd
      */
-    private function subscriptionFactory($name, array $info = [])
+    private function subscriptionFactory($name, array $info = null)
     {
         return new Subscription(
             $this->connection,

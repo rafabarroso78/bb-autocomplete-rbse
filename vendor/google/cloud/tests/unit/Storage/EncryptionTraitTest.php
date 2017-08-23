@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Storage;
+namespace Google\Cloud\Tests\Storage;
 
-use Google\Cloud\Tests\KeyPairGenerateTrait;
 use Google\Cloud\Storage\EncryptionTrait;
 
 /**
@@ -25,35 +24,11 @@ use Google\Cloud\Storage\EncryptionTrait;
  */
 class EncryptionTraitTest extends \PHPUnit_Framework_TestCase
 {
-    use KeyPairGenerateTrait;
-
-    private $implementation;
+    private $trait;
 
     public function setUp()
     {
-        $this->implementation = \Google\Cloud\Dev\impl(EncryptionTrait::class);
-    }
-
-    public function testSignString()
-    {
-        $testString = 'hello world';
-
-        list($pkey, $pub) = $this->getKeyPair();
-
-        $res = $this->implementation->call('signString', [$pkey, $testString]);
-
-        $this->assertTrue($this->verifySignature($pkey, $testString, urlencode(base64_encode($res))));
-    }
-
-    public function testSignStringWithOpenSsl()
-    {
-        $testString = 'hello world';
-
-        list($pkey, $pub) = $this->getKeyPair();
-
-        $res = $this->implementation->call('signString', [$pkey, $testString, true]);
-
-        $this->assertTrue($this->verifySignature($pkey, $testString, urlencode(base64_encode($res))));
+        $this->trait = $this->getObjectForTrait(EncryptionTrait::class);
     }
 
     /**
@@ -63,21 +38,31 @@ class EncryptionTraitTest extends \PHPUnit_Framework_TestCase
     {
         $this->assertEquals(
             $expectedOptions,
-            $this->implementation->formatEncryptionHeaders($options)
+            $this->trait->formatEncryptionHeaders($options)
         );
+    }
+
+    /**
+     * @expectedException \InvalidArgumentException
+     */
+    public function testFormatEncryptionHeadersThrowsExceptionWithoutBothKeyAndHash()
+    {
+        $this->trait->formatEncryptionHeaders([
+            'encryptionKey' => 'abcd'
+        ]);
     }
 
     public function encryptionProvider()
     {
-        $key = base64_encode('abcd');
-        $hash = base64_encode(hash('SHA256', base64_decode($key), true));
-        $destinationKey = base64_encode('efgh');
-        $destinationHash = base64_encode(hash('SHA256', base64_decode($destinationKey), true));
+        $key = 'abcd';
+        $hash = '1234';
+        $destinationKey = 'efgh';
+        $destinationHash = '5678';
 
         return [
             [
                 [
-                    'restOptions' => [
+                    'httpOptions' => [
                         'headers' => $this->getEncryptionHeaders($key, $hash)
                     ]
                 ],
@@ -88,17 +73,7 @@ class EncryptionTraitTest extends \PHPUnit_Framework_TestCase
             ],
             [
                 [
-                    'restOptions' => [
-                        'headers' => $this->getEncryptionHeaders($key, $hash)
-                    ]
-                ],
-                [
-                    'encryptionKey' => $key
-                ]
-            ],
-            [
-                [
-                    'restOptions' => [
+                    'httpOptions' => [
                         'headers' => array_merge(
                             $this->getEncryptionHeaders($destinationKey, $destinationHash),
                             $this->getCopySourceEncryptionHeaders($key, $hash)
@@ -115,14 +90,14 @@ class EncryptionTraitTest extends \PHPUnit_Framework_TestCase
             ],
             [
                 [
-                    'restOptions' => [
+                    'httpOptions' => [
                         'headers' => $this->getEncryptionHeaders($key, $hash) + ['hey' => 'dont clobber me']
                     ]
                 ],
                 [
                     'encryptionKey' => $key,
                     'encryptionKeySHA256' => $hash,
-                    'restOptions' => [
+                    'httpOptions' => [
                         'headers' => [
                             'hey' => 'dont clobber me'
                         ]
@@ -136,8 +111,8 @@ class EncryptionTraitTest extends \PHPUnit_Framework_TestCase
     {
         return [
             'x-goog-encryption-algorithm' => 'AES256',
-            'x-goog-encryption-key' => $key,
-            'x-goog-encryption-key-sha256' => $hash
+            'x-goog-encryption-key' => base64_encode($key),
+            'x-goog-encryption-key-sha256' => base64_encode($hash)
         ];
     }
 
@@ -145,8 +120,8 @@ class EncryptionTraitTest extends \PHPUnit_Framework_TestCase
     {
         return [
             'x-goog-copy-source-encryption-algorithm' => 'AES256',
-            'x-goog-copy-source-encryption-key' => $key,
-            'x-goog-copy-source-encryption-key-sha256' => $hash
+            'x-goog-copy-source-encryption-key' => base64_encode($key),
+            'x-goog-copy-source-encryption-key-sha256' => base64_encode($hash)
         ];
     }
 }

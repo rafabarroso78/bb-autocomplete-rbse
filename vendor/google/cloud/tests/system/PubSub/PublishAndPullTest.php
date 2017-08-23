@@ -17,10 +17,6 @@
 
 namespace Google\Cloud\Tests\System\PubSub;
 
-/**
- * @group pubsub
- * @group pubsub-publish
- */
 class PublishAndPullTest extends PubSubTestCase
 {
     /**
@@ -32,8 +28,8 @@ class PublishAndPullTest extends PubSubTestCase
         $subName = uniqid(self::TESTING_PREFIX);
         $topic = $client->createTopic($topicName);
         $sub = $client->subscribe($subName, $topicName);
-        self::$deletionQueue->add($topic);
-        self::$deletionQueue->add($sub);
+        self::$deletionQueue[] = $topic;
+        self::$deletionQueue[] = $sub;
 
         $message = [
             'data' => 'A message.',
@@ -43,7 +39,7 @@ class PublishAndPullTest extends PubSubTestCase
         ];
         $topic->publish($message);
 
-        $messages = $sub->pull();
+        $messages = iterator_to_array($sub->pull());
         $sub->modifyAckDeadline($messages[0], 15);
         $sub->acknowledge($messages[0]);
 
@@ -60,8 +56,8 @@ class PublishAndPullTest extends PubSubTestCase
         $subName = uniqid(self::TESTING_PREFIX);
         $topic = $client->createTopic($topicName);
         $sub = $client->subscribe($subName, $topicName);
-        self::$deletionQueue->add($topic);
-        self::$deletionQueue->add($sub);
+        self::$deletionQueue[] = $topic;
+        self::$deletionQueue[] = $sub;
 
         $messages = [
             [
@@ -80,7 +76,7 @@ class PublishAndPullTest extends PubSubTestCase
 
         $topic->publishBatch($messages);
 
-        $actualMessages = $sub->pull();
+        $actualMessages = iterator_to_array($sub->pull());
         $sub->modifyAckDeadlineBatch($actualMessages, 15);
         $sub->acknowledgeBatch($actualMessages);
 

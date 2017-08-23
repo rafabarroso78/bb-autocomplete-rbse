@@ -17,19 +17,19 @@
 
 namespace Google\Cloud\Tests\System\Logging;
 
+use Google\Cloud\ExponentialBackoff;
 use Google\Cloud\BigQuery\BigQueryClient;
-use Google\Cloud\Core\ExponentialBackoff;
 use Google\Cloud\Logging\LoggingClient;
 use Google\Cloud\PubSub\PubSubClient;
 use Google\Cloud\Storage\StorageClient;
-use Google\Cloud\Tests\System\SystemTestCase;
 
-class LoggingTestCase extends SystemTestCase
+class LoggingTestCase extends \PHPUnit_Framework_TestCase
 {
     const TESTING_PREFIX = 'gcloud_testing_';
 
     protected static $bucket;
     protected static $dataset;
+    protected static $deletionQueue = [];
     protected static $grpcClient;
     protected static $restClient;
     protected static $topic;
@@ -52,35 +52,43 @@ class LoggingTestCase extends SystemTestCase
         }
 
         $keyFilePath = getenv('GOOGLE_CLOUD_PHP_TESTS_KEY_PATH');
-
-        $storage = new StorageClient([
+        self::$bucket = (new StorageClient([
             'keyFilePath' => $keyFilePath
-        ]);
-
-        $bigquery = new BigQueryClient([
+        ]))->createBucket(uniqid(self::TESTING_PREFIX));
+        self::$dataset = (new BigQueryClient([
             'keyFilePath' => $keyFilePath
-        ]);
-
-        $pubsub = new PubSubClient([
-            'keyFilePath' => $keyFilePath,
-            'transport' => 'rest'
-        ]);
-
-        self::$bucket = self::createBucket($storage, uniqid(self::TESTING_PREFIX));
-        self::$dataset = self::createDataset($bigquery, uniqid(self::TESTING_PREFIX));
-        self::$topic = self::createTopic($pubsub, uniqid(self::TESTING_PREFIX));
-
+        ]))->createDataset(uniqid(self::TESTING_PREFIX));
         self::$restClient = new LoggingClient([
             'keyFilePath' => $keyFilePath,
             'transport' => 'rest'
         ]);
-
         self::$grpcClient = new LoggingClient([
             'keyFilePath' => $keyFilePath,
             'transport' => 'grpc'
         ]);
-
+        self::$topic = (new PubSubClient([
+            'keyFilePath' => $keyFilePath,
+            'transport' => 'rest'
+        ]))->createTopic(uniqid(self::TESTING_PREFIX));
         self::$hasSetUp = true;
+    }
+
+    public static function tearDownFixtures()
+    {
+        if (!self::$hasSetUp) {
+            return;
+        }
+
+        self::$deletionQueue[] = self::$dataset;
+        self::$deletionQueue[] = self::$bucket;
+        self::$deletionQueue[] = self::$topic;
+        $backoff = new ExponentialBackoff(8);
+
+        foreach (self::$deletionQueue as $item) {
+            $backoff->execute(function () use ($item) {
+                $item->delete();
+            });
+        }
     }
 }
 

@@ -44,10 +44,6 @@
         "gcsImageUri": {
           "description": "Google Cloud Storage image URI. It must be in the following form:\n`gs://bucket_name/object_name`. For more\ndetails, please see: https://cloud.google.com/storage/docs/reference-uris.\nNOTE: Cloud Storage object versioning is not supported!",
           "type": "string"
-        },
-        "ImageUri": {
-          "description": "Image URI which supports: 1) Google Cloud Storage image URI, which must be in the following form: `gs://bucket_name/object_name` (for details, see [Google Cloud Storage Request URIs](https://cloud.google.com/storage/docs/reference-uris)). NOTE: Cloud Storage object versioning is not supported. 2) Publicly accessible image HTTP/HTTPS URL. This is preferred over the legacy `gcs_image_uri` above. When both `gcs_image_uri` and `image_uri` are specified, `image_uri` takes precedence.",
-          "type": "string"
         }
       },
       "id": "ImageSource"
@@ -765,11 +761,8 @@
             "LOGO_DETECTION",
             "LABEL_DETECTION",
             "TEXT_DETECTION",
-            "DOCUMENT_TEXT_DETECTION",
             "SAFE_SEARCH_DETECTION",
-            "IMAGE_PROPERTIES",
-            "CROP_HINTS",
-            "WEB_DETECTION"
+            "IMAGE_PROPERTIES"
           ],
           "enumDescriptions": [
             "Unspecified feature type.",
@@ -778,11 +771,8 @@
             "Run logo detection.",
             "Run label detection.",
             "Run OCR.",
-            "Run dense text document OCR. Takes precedence when both DOCUMENT_TEXT_DETECTION and TEXT_DETECTION are present.",
             "Run various computer vision models to compute image safe-search properties.",
-            "Compute a set of properties about the image (such as the image's dominant colors).",
-            "Run crop hints.",
-            "Run web annotation."
+            "Compute a set of properties about the image (such as the image's dominant colors)."
           ],
           "type": "string"
         },

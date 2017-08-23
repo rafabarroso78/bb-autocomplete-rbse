@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2017 Google Inc. All Rights Reserved.
+ * Copyright 2016 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +30,7 @@ trait ResourceNameTrait
     private $templates = [
         'project' => 'projects/%1$s',
         'topic' => 'projects/%2$s/topics/%1$s',
-        'subscription' => 'projects/%2$s/subscriptions/%1$s',
-        'snapshot' => 'projects/%2$s/snapshots/%1$s'
+        'subscription' => 'projects/%2$s/subscriptions/%1$s'
     ];
 
     /**
@@ -40,8 +39,7 @@ trait ResourceNameTrait
     private $regexes = [
         'project' => '/^projects\/([^\/]*)$/',
         'topic' => '/projects\/[^\/]*\/topics\/(.*)/',
-        'subscription' => '/projects\/[^\/]*\/subscriptions\/(.*)/',
-        'snapshot' => '/projects\/[^\/]*\/snapshots\/(.*)/'
+        'subscription' => '/projects\/[^\/]*\/subscriptions\/(.*)/'
     ];
 
     /**
@@ -57,7 +55,7 @@ trait ResourceNameTrait
      * @return string
      * @throws \InvalidArgumentException
      */
-    private function pluckName($type, $name)
+    public function pluckName($type, $name)
     {
         if (!isset($this->regexes[$type])) {
             throw new InvalidArgumentException(sprintf(
@@ -87,7 +85,7 @@ trait ResourceNameTrait
      * @return string
      * @throws \InvalidArgumentException
      */
-    private function formatName($type, $name, $projectId = null)
+    public function formatName($type, $name, $projectId = null)
     {
         if (!isset($this->templates[$type])) {
             throw new InvalidArgumentException(sprintf(
@@ -115,7 +113,7 @@ trait ResourceNameTrait
      * @return bool
      * @throws \InvalidArgumentException
      */
-    private function isFullyQualifiedName($type, $name)
+    public function isFullyQualifiedName($type, $name)
     {
         if (!isset($this->regexes[$type])) {
             throw new InvalidArgumentException(sprintf(

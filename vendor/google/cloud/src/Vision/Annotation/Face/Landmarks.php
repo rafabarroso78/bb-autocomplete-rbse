@@ -24,12 +24,12 @@ use Google\Cloud\Vision\Annotation\AbstractFeature;
  *
  * Example:
  * ```
- * use Google\Cloud\Vision\VisionClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $vision = new VisionClient();
+ * $cloud = new ServiceBuilder();
+ * $vision = $cloud->vision();
  *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
- * $image = $vision->image($imageResource, ['FACE_DETECTION']);
+ * $image = $vision->image(fopen(__DIR__ .'/assets/family-photo.jpg', 'r'), ['FACE_DETECTION']);
  * $annotation = $vision->annotate($image);
  *
  * $faces = $annotation->faces();
@@ -73,9 +73,9 @@ class Landmarks extends AbstractFeature
      * Example:
      * ```
      * $pos = $landmarks->leftEye();
-     * echo "x position: ". $pos['x'] . PHP_EOL;
-     * echo "y position: ". $pos['y'] . PHP_EOL;
-     * echo "z position: ". $pos['z'] . PHP_EOL;
+     * echo "x position: ". $pos['x'];
+     * echo "y position: ". $pos['y'];
+     * echo "z position: ". $pos['z'];
      * ```
      *
      * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#position Position
@@ -93,9 +93,9 @@ class Landmarks extends AbstractFeature
      * Example:
      * ```
      * $pos = $landmarks->leftEyePupil();
-     * echo "x position: ". $pos['x'] . PHP_EOL;
-     * echo "y position: ". $pos['y'] . PHP_EOL;
-     * echo "z position: ". $pos['z'] . PHP_EOL;
+     * echo "x position: ". $pos['x'];
+     * echo "y position: ". $pos['y'];
+     * echo "z position: ". $pos['z'];
      * ```
      *
      * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#position Position
@@ -116,12 +116,12 @@ class Landmarks extends AbstractFeature
      *
      * Example:
      * ```
-     * $positions = $landmarks->leftEyeBoundaries();
+     * $positions = $landmarks->leftEye();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -150,10 +150,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->leftEyebrow();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -176,9 +176,9 @@ class Landmarks extends AbstractFeature
      * Example:
      * ```
      * $pos = $landmarks->rightEye();
-     * echo "x position: ". $pos['x'] . PHP_EOL;
-     * echo "y position: ". $pos['y'] . PHP_EOL;
-     * echo "z position: ". $pos['z'] . PHP_EOL;
+     * echo "x position: ". $pos['x'];
+     * echo "y position: ". $pos['y'];
+     * echo "z position: ". $pos['z'];
      * ```
      *
      * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#position Position
@@ -196,9 +196,9 @@ class Landmarks extends AbstractFeature
      * Example:
      * ```
      * $pos = $landmarks->rightEyePupil();
-     * echo "x position: ". $pos['x'] . PHP_EOL;
-     * echo "y position: ". $pos['y'] . PHP_EOL;
-     * echo "z position: ". $pos['z'] . PHP_EOL;
+     * echo "x position: ". $pos['x'];
+     * echo "y position: ". $pos['y'];
+     * echo "z position: ". $pos['z'];
      * ```
      *
      * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#position Position
@@ -221,10 +221,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->rightEyeBoundaries();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -253,10 +253,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->rightEyebrow();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -279,9 +279,9 @@ class Landmarks extends AbstractFeature
      * Example:
      * ```
      * $pos = $landmarks->midpointBetweenEyes();
-     * echo "x position: ". $pos['x'] . PHP_EOL;
-     * echo "y position: ". $pos['y'] . PHP_EOL;
-     * echo "z position: ". $pos['z'] . PHP_EOL;
+     * echo "x position: ". $pos['x'];
+     * echo "y position: ". $pos['y'];
+     * echo "z position: ". $pos['z'];
      * ```
      *
      * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#position Position
@@ -304,10 +304,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->lips();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -334,10 +334,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->mouth();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -365,10 +365,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->nose();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -397,10 +397,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->ears();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *
@@ -423,9 +423,9 @@ class Landmarks extends AbstractFeature
      * Example:
      * ```
      * $pos = $landmarks->forehead();
-     * echo "x position: ". $pos['x'] . PHP_EOL;
-     * echo "y position: ". $pos['y'] . PHP_EOL;
-     * echo "z position: ". $pos['z'] . PHP_EOL;
+     * echo "x position: ". $pos['x'];
+     * echo "y position: ". $pos['y'];
+     * echo "z position: ". $pos['z'];
      * ```
      *
      * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#position Position
@@ -448,10 +448,10 @@ class Landmarks extends AbstractFeature
      * ```
      * $positions = $landmarks->chin();
      * foreach ($positions as $name => $pos) {
-     *     echo "Position Type: ". $name . PHP_EOL;
-     *     echo "x position: ". $pos['x'] . PHP_EOL;
-     *     echo "y position: ". $pos['y'] . PHP_EOL;
-     *     echo "z position: ". $pos['z'] . PHP_EOL;
+     *     echo "Position Type: ". $name;
+     *     echo "x position: ". $pos['x'];
+     *     echo "y position: ". $pos['y'];
+     *     echo "z position: ". $pos['z'];
      * }
      * ```
      *

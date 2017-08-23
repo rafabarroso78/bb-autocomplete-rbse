@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\BigQuery;
+namespace Google\Cloud\Tests\BigQuery;
 
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
 use Google\Cloud\BigQuery\QueryResults;
-use Google\Cloud\BigQuery\ValueMapper;
 use Prophecy\Argument;
 
 /**
@@ -36,12 +35,7 @@ class QueryResultsTest extends \PHPUnit_Framework_TestCase
             ['f' => [['v' => 'Alton']]]
         ],
         'schema' => [
-            'fields' => [
-                [
-                    'name' => 'first_name',
-                    'type' => 'STRING'
-                ]
-            ]
+            'fields' => [['name' => 'first_name']]
         ]
     ];
 
@@ -52,18 +46,11 @@ class QueryResultsTest extends \PHPUnit_Framework_TestCase
 
     public function getQueryResults($connection, array $data = [])
     {
-        return new QueryResults(
-            $connection->reveal(),
-            $this->jobId,
-            $this->projectId,
-            $data,
-            [],
-            new ValueMapper(false)
-        );
+        return new QueryResults($connection->reveal(), $this->jobId, $this->projectId, $data, []);
     }
 
     /**
-     * @expectedException \Google\Cloud\Core\Exception\GoogleException
+     * @expectedException \Google\Cloud\Exception\GoogleException
      */
     public function testGetsRowsThrowsExceptionWhenQueryNotComplete()
     {

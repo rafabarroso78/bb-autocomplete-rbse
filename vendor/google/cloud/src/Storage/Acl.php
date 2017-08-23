@@ -26,16 +26,6 @@ use InvalidArgumentException;
  * users and allow other users to access your buckets and objects. For more
  * information please see the overview on
  * [access-control](https://cloud.google.com/storage/docs/access-control).
- *
- * Example:
- * ```
- * use Google\Cloud\Storage\StorageClient;
- *
- * $storage = new StorageClient();
- *
- * $bucket = $storage->bucket('my-bucket');
- * $acl = $bucket->acl();
- * ```
  */
 class Acl
 {
@@ -46,7 +36,7 @@ class Acl
     /**
      * @var ConnectionInterface Represents a connection to Cloud Storage.
      */
-    protected $connection;
+    private $connection;
 
     /**
      * @var array ACL specific options.
@@ -111,7 +101,7 @@ class Acl
      *
      * Example:
      * ```
-     * $res = $acl->get(['entity' => 'allAuthenticatedUsers']);
+     * $acl->get(['entity' => 'allAuthenticatedUsers']);
      * ```
      *
      * @see https://cloud.google.com/storage/docs/json_api/v1/bucketAccessControls/get BucketAccessControls get API

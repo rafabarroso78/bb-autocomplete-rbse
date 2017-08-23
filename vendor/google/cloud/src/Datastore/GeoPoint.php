@@ -24,11 +24,7 @@ use InvalidArgumentException;
  *
  * Example:
  * ```
- * use Google\Cloud\Datastore\DatastoreClient;
- *
- * $datastore = new DatastoreClient();
- *
- * $point = $datastore->geoPoint(37.423147, -122.085015);
+ * $point = new GeoPoint(37.423147, -122.085015);
  * ```
  *
  * @see https://cloud.google.com/datastore/reference/rest/Shared.Types/LatLng LatLng
@@ -78,7 +74,7 @@ class GeoPoint
     }
 
     /**
-     * Set the latitude
+     * Set the longitude
      *
      * Non-numeric values will result in an exception
      *

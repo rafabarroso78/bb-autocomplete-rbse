@@ -17,18 +17,18 @@
 
 namespace Google\Cloud\Logging\Connection;
 
-use Google\Cloud\Core\GrpcRequestWrapper;
-use Google\Cloud\Core\GrpcTrait;
+use DrSlump\Protobuf\Codec\CodecInterface;
 use Google\Cloud\Logging\Logger;
-use Google\Cloud\Logging\LoggingClient;
 use Google\Cloud\Logging\V2\ConfigServiceV2Client;
 use Google\Cloud\Logging\V2\LoggingServiceV2Client;
 use Google\Cloud\Logging\V2\MetricsServiceV2Client;
-use Google\GAX\Serializer;
-use Google\Logging\V2\LogEntry;
-use Google\Logging\V2\LogMetric;
-use Google\Logging\V2\LogSink;
-use Google\Logging\V2\LogSink_VersionFormat;
+use Google\Cloud\PhpArray;
+use Google\Cloud\GrpcRequestWrapper;
+use Google\Cloud\GrpcTrait;
+use google\logging\v2\LogEntry;
+use google\logging\v2\LogMetric;
+use google\logging\v2\LogSink;
+use google\logging\v2\LogSink\VersionFormat;
 
 /**
  * Implementation of the
@@ -39,9 +39,9 @@ class Grpc implements ConnectionInterface
     use GrpcTrait;
 
     private static $versionFormatMap = [
-        LogSink_VersionFormat::VERSION_FORMAT_UNSPECIFIED => 'VERSION_FORMAT_UNSPECIFIED',
-        LogSink_VersionFormat::V1 => 'V1',
-        LogSink_VersionFormat::V2 => 'V2'
+        VersionFormat::VERSION_FORMAT_UNSPECIFIED => 'VERSION_FORMAT_UNSPECIFIED',
+        VersionFormat::V1 => 'V1',
+        VersionFormat::V2 => 'V2'
     ];
 
     /**
@@ -60,9 +60,9 @@ class Grpc implements ConnectionInterface
     private $metricsClient;
 
     /**
-     * @var Serializer
+     * @var CodecInterface
      */
-    private $serializer;
+    private $codec;
 
     /**
      * @var array
@@ -88,24 +88,20 @@ class Grpc implements ConnectionInterface
      */
     public function __construct(array $config = [])
     {
-        $this->serializer = new Serializer([
+        $this->codec = new PhpArray([
             'timestamp' => function ($v) {
                 return $this->formatTimestampFromApi($v);
             },
             'severity' => function ($v) {
                 return Logger::getLogLevelMap()[$v];
             },
-            'output_version_format' => function ($v) {
+            'outputVersionFormat' => function ($v) {
                 return self::$versionFormatMap[$v];
-            },
-            'json_payload' => function ($v) {
-                return $this->unpackStructFromApi($v);
             }
         ]);
-
-        $config['serializer'] = $this->serializer;
+        $config['codec'] = $this->codec;
         $this->setRequestWrapper(new GrpcRequestWrapper($config));
-        $gaxConfig = $this->getGaxConfig(LoggingClient::VERSION);
+        $gaxConfig = $this->getGaxConfig();
 
         $this->configClient = new ConfigServiceV2Client($gaxConfig);
         $this->loggingClient = new LoggingServiceV2Client($gaxConfig);
@@ -153,7 +149,10 @@ class Grpc implements ConnectionInterface
             $args['outputVersionFormat'] = array_flip(self::$versionFormatMap)[$args['outputVersionFormat']];
         }
 
-        $pbSink = $this->serializer->decodeMessage(new LogSink(), $this->pluckArray($this->sinkKeys, $args));
+        $pbSink = (new LogSink())->deserialize(
+            $this->pluckArray($this->sinkKeys, $args),
+            $this->codec
+        );
 
         return $this->send([$this->configClient, 'createSink'], [
             $this->pluck('parent', $args),
@@ -196,7 +195,10 @@ class Grpc implements ConnectionInterface
             $args['outputVersionFormat'] = array_flip(self::$versionFormatMap)[$args['outputVersionFormat']];
         }
 
-        $pbSink = $this->serializer->decodeMessage(new LogSink(), $this->pluckArray($this->sinkKeys, $args));
+        $pbSink = (new LogSink())->deserialize(
+            $this->pluckArray($this->sinkKeys, $args),
+            $this->codec
+        );
 
         return $this->send([$this->configClient, 'updateSink'], [
             $this->pluck('sinkName', $args),
@@ -223,7 +225,10 @@ class Grpc implements ConnectionInterface
      */
     public function createMetric(array $args = [])
     {
-        $pbMetric = $this->serializer->decodeMessage(new LogMetric(), $this->pluckArray($this->metricKeys, $args));
+        $pbMetric = (new LogMetric())->deserialize(
+            $this->pluckArray($this->metricKeys, $args),
+            $this->codec
+        );
 
         return $this->send([$this->metricsClient, 'createLogMetric'], [
             $this->pluck('parent', $args),
@@ -262,7 +267,10 @@ class Grpc implements ConnectionInterface
      */
     public function updateMetric(array $args = [])
     {
-        $pbMetric = $this->serializer->decodeMessage(new LogMetric(), $this->pluckArray($this->metricKeys, $args));
+        $pbMetric = (new LogMetric())->deserialize(
+            $this->pluckArray($this->metricKeys, $args),
+            $this->codec
+        );
 
         return $this->send([$this->metricsClient, 'updateLogMetric'], [
             $this->pluck('metricName', $args),
@@ -305,16 +313,18 @@ class Grpc implements ConnectionInterface
             $entry['jsonPayload'] = $this->formatStructForApi($entry['jsonPayload']);
         }
 
-        if (isset($entry['timestamp'])) {
-            $entry['timestamp'] = $this->formatTimestampForApi($entry['timestamp']);
-        } else {
-            unset($entry['timestamp']);
+        if (isset($entry['labels'])) {
+            $entry['labels'] = $this->formatLabelsForApi($entry['labels']);
+        }
+
+        if (isset($entry['resource']['labels'])) {
+            $entry['resource']['labels'] = $this->formatLabelsForApi($entry['resource']['labels']);
         }
 
         if (isset($entry['severity']) && is_string($entry['severity'])) {
             $entry['severity'] = array_flip(Logger::getLogLevelMap())[$entry['severity']];
         }
 
-        return $this->serializer->decodeMessage(new LogEntry(), $entry);
+        return (new LogEntry)->deserialize($entry, $this->codec);
     }
 }

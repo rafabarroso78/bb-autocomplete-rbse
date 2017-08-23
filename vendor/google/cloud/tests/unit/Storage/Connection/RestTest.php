@@ -15,15 +15,9 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Storage\Connection;
+namespace Google\Cloud\Tests\Storage\Connection;
 
-use Google\Cloud\Core\RequestBuilder;
-use Google\Cloud\Core\RequestWrapper;
-use Google\Cloud\Core\Upload\MultipartUploader;
-use Google\Cloud\Core\Upload\ResumableUploader;
-use Google\Cloud\Core\Upload\StreamableUploader;
 use Google\Cloud\Storage\Connection\Rest;
-use Google\Cloud\Storage\StorageClient;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
@@ -41,7 +35,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->requestWrapper = $this->prophesize(RequestWrapper::class);
+        $this->requestWrapper = $this->prophesize('Google\Cloud\RequestWrapper');
         $this->successBody = '{"canI":"kickIt"}';
     }
 
@@ -55,7 +49,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
         $request = new Request('GET', '/somewhere');
         $response = new Response(200, [], $this->successBody);
 
-        $requestBuilder = $this->prophesize(RequestBuilder::class);
+        $requestBuilder = $this->prophesize('Google\Cloud\RequestBuilder');
         $requestBuilder->build(
             Argument::type('string'),
             Argument::type('string'),
@@ -63,7 +57,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
         )->willReturn($request);
 
         $this->requestWrapper->send(
-            Argument::type(RequestInterface::class),
+            Argument::type('Psr\Http\Message\RequestInterface'),
             Argument::type('array')
         )->willReturn($response);
 
@@ -97,10 +91,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
             ['listObjects'],
             ['patchObject'],
             ['rewriteObject'],
-            ['composeObject'],
-            ['getBucketIamPolicy'],
-            ['setBucketIamPolicy'],
-            ['testBucketIamPermissions'],
+            ['composeObject']
         ];
     }
 
@@ -110,7 +101,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
         $response = new Response(200, [], $this->successBody);
 
         $this->requestWrapper->send(
-            Argument::type(RequestInterface::class),
+            Argument::type('Psr\Http\Message\RequestInterface'),
             Argument::type('array')
         )->will(
             function ($args) use (&$actualRequest, $response) {
@@ -126,7 +117,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
             'bucket' => 'bigbucket',
             'object' => 'myfile.txt',
             'generation' => 100,
-            'restOptions' => ['debug' => true],
+            'httpOptions' => ['debug' => true],
             'retries' => 0
         ]);
 
@@ -152,7 +143,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
         $response = new Response(200, ['Location' => 'http://www.mordor.com'], $this->successBody);
 
         $this->requestWrapper->send(
-            Argument::type(RequestInterface::class),
+            Argument::type('Psr\Http\Message\RequestInterface'),
             Argument::type('array')
         )->will(
             function ($args) use (&$actualRequest, $response) {
@@ -193,7 +184,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
                     'predefinedAcl' => 'private',
                     'metadata' => ['contentType' => 'text/plain']
                 ],
-                ResumableUploader::class,
+                'Google\Cloud\Upload\ResumableUploader',
                 'text/plain',
                 [
                     'md5Hash' => base64_encode(Psr7\hash($tempFile, 'md5', true)),
@@ -205,7 +196,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
                     'data' => $logoFile,
                     'validate' => false
                 ],
-                MultipartUploader::class,
+                'Google\Cloud\Upload\MultipartUploader',
                 'image/svg+xml',
                 [
                     'name' => 'logo.svg'
@@ -224,29 +215,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
                         ]
                     ]
                 ],
-                ResumableUploader::class,
-                'text/plain',
-                [
-                    'name' => 'file.ext',
-                    'metadata' => [
-                        'here' => 'wego'
-                    ]
-                ]
-            ],
-            [
-                [
-                    'data' => 'abcdefg',
-                    'name' => 'file.ext',
-                    'streamable' => true,
-                    'validate' => false,
-                    'metadata' => [
-                        'contentType' => 'text/plain',
-                        'metadata' => [
-                            'here' => 'wego'
-                        ]
-                    ]
-                ],
-                StreamableUploader::class,
+                'Google\Cloud\Upload\ResumableUploader',
                 'text/plain',
                 [
                     'name' => 'file.ext',

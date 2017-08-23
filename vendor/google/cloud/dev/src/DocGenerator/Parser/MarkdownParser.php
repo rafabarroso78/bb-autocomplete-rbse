@@ -49,7 +49,7 @@ class MarkdownParser implements ParserInterface
         $body = $doc->getElementsByTagName('body')->item(0);
 
         return [
-            'id' => strtolower(trim($pathinfo['dirname'] .'/'. $pathinfo['filename'], '/.')),
+            'id' => strtolower(substr($pathinfo['dirname'] .'/'. $pathinfo['filename'], 5)),
             'type' => 'guide',
             'title' => $heading->textContent,
             'name' => $heading->textContent,

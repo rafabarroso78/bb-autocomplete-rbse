@@ -17,10 +17,6 @@
 
 namespace Google\Cloud\Tests\System\BigQuery;
 
-/**
- * @group bigquery
- * @group bigquery-dataset
- */
 class ManageDatasetsTest extends BigQueryTestCase
 {
     public function testListDatasets()
@@ -32,7 +28,7 @@ class ManageDatasetsTest extends BigQueryTestCase
         ];
 
         foreach ($datasetsToCreate as $datasetToCreate) {
-            $this->createDataset(self::$client, $datasetToCreate);
+            self::$deletionQueue[] = self::$client->createDataset($datasetToCreate);
         }
 
         $datasets = self::$client->datasets();
@@ -57,7 +53,8 @@ class ManageDatasetsTest extends BigQueryTestCase
         ];
         $this->assertFalse(self::$client->dataset($id)->exists());
 
-        $dataset = $this->createDataset(self::$client, $id, $options);
+        $dataset = self::$client->createDataset($id, $options);
+        self::$deletionQueue[] = $dataset;
 
         $this->assertTrue(self::$client->dataset($id)->exists());
         $this->assertEquals($id, $dataset->id());

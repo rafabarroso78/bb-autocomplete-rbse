@@ -18,12 +18,8 @@
 namespace Google\Cloud\Tests\System\Storage;
 
 use Google\Cloud\Storage\Acl;
-use Google\Cloud\Core\Exception\NotFoundException;
+use Google\Cloud\Exception\NotFoundException;
 
-/**
- * @group storage
- * @group storage-acl
- */
 class ManageAclTest extends StorageTestCase
 {
     public function testManageBucketAcl()

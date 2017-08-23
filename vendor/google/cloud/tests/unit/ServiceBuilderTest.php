@@ -15,28 +15,20 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit;
+namespace Google\Cloud\Tests;
 
-use Google\Cloud\BigQuery\BigQueryClient;
-use Google\Cloud\Datastore\DatastoreClient;
-use Google\Cloud\Logging\LoggingClient;
-use Google\Cloud\Language\LanguageClient;
-use Google\Cloud\PubSub\PubSubClient;
 use Google\Cloud\ServiceBuilder;
-use Google\Cloud\Speech\SpeechClient;
-use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Translate\TranslateClient;
-use Google\Cloud\Vision\VisionClient;
 
 /**
- * @group servicebuilder
+ * @group root
  */
 class ServiceBuilderTest extends \PHPUnit_Framework_TestCase
 {
     /**
      * @dataProvider serviceProvider
      */
-    public function testBuildsClients($serviceName, $expectedClient, array $args = [])
+    public function testBuildsClients($serviceName, $expectedClient)
     {
         $serviceBuilder = new ServiceBuilder(['projectId' => 'myProject']);
         $config = [
@@ -45,10 +37,12 @@ class ServiceBuilderTest extends \PHPUnit_Framework_TestCase
             'httpHandler' => function() {
                 return;
             }
-        ] + $args;
+        ];
 
+        $globalConfigClient = $serviceBuilder->$serviceName();
         $localConfigClient = $serviceBuilder->$serviceName($config);
 
+        $this->assertInstanceOf($expectedClient, $globalConfigClient);
         $this->assertInstanceOf($expectedClient, $localConfigClient);
     }
 
@@ -66,29 +60,28 @@ class ServiceBuilderTest extends \PHPUnit_Framework_TestCase
         return [
             [
                 'bigQuery',
-                BigQueryClient::class
-            ], [
-                'datastore',
-                DatastoreClient::class
-            ], [
-                'logging',
-                LoggingClient::class
-            ], [
-                'language',
-                LanguageClient::class
+                'Google\Cloud\BigQuery\BigQueryClient'
             ], [
                 'pubsub',
-                PubSubClient::class
+                'Google\Cloud\PubSub\PubSubClient'
             ], [
                 'speech',
-                SpeechClient::class,
-                ['languageCode' => 'en-US']
+                'Google\Cloud\Speech\SpeechClient'
             ], [
                 'storage',
-                StorageClient::class
+                'Google\Cloud\Storage\StorageClient'
             ], [
                 'vision',
-                VisionClient::class
+                'Google\Cloud\Vision\VisionClient'
+            ], [
+                'naturalLanguage',
+                'Google\Cloud\NaturalLanguage\NaturalLanguageClient'
+            ], [
+                'logging',
+                'Google\Cloud\Logging\LoggingClient'
+            ], [
+                'datastore',
+                'Google\Cloud\Datastore\DatastoreClient'
             ]
         ];
     }

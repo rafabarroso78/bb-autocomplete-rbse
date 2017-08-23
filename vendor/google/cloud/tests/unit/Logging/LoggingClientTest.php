@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Logging;
+namespace Google\Cloud\Tests\Logging;
 
 use Google\Cloud\Logging\Logger;
 use Google\Cloud\Logging\LoggingClient;
@@ -43,27 +43,6 @@ class LoggingClientTest extends \PHPUnit_Framework_TestCase
         $this->formattedProjectId = "projects/$this->projectId";
         $this->connection = $this->prophesize(ConnectionInterface::class);
         $this->client = new LoggingTestClient(['projectId' => $this->projectId]);
-    }
-
-    public function testPsrBatchLogger()
-    {
-        $psrBatchLogger = LoggingClient::psrBatchLogger('app');
-        $this->assertInstanceOf(PsrLogger::class, $psrBatchLogger);
-        $r = new \ReflectionObject($psrBatchLogger);
-        $p = $r->getProperty('batchEnabled');
-        $p->setAccessible(true);
-        $this->assertTrue($p->getValue($psrBatchLogger));
-        $psrBatchLogger = LoggingClient::psrBatchLogger(
-            'app',
-            ['clientConfig' => ['projectId' => 'my-project']]);
-        $this->assertInstanceOf(PsrLogger::class, $psrBatchLogger);
-        $r = new \ReflectionObject($psrBatchLogger);
-        $p = $r->getProperty('clientConfig');
-        $p->setAccessible(true);
-        $this->assertEquals(
-            ['projectId' => 'my-project'],
-            $p->getValue($psrBatchLogger)
-        );
     }
 
     public function testCreatesSink()
@@ -229,6 +208,7 @@ class LoggingClientTest extends \PHPUnit_Framework_TestCase
     {
         $secondProjectId = 'secondProjectId';
         $this->connection->listEntries([
+            'pageToken' => null,
             'resourceNames' => [
                 'projects/' . $this->projectId,
                 'projects/' . $secondProjectId
@@ -286,7 +266,7 @@ class LoggingClientTest extends \PHPUnit_Framework_TestCase
     public function testGetsPsrLogger()
     {
         $this->client->setConnection($this->connection->reveal());
-        $this->assertInstanceOf(PsrLogger::class, $this->client->psrLogger('myLogger'));
+        $this->assertInstanceOf(PsrLogger::class, $this->client->psrLogger('myLogger', ['type' => 'global']));
     }
 
     public function testGetsLogger()

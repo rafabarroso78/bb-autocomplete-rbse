@@ -4,19 +4,19 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInite6f0cd987c420f087ac45a1a4553774c
+class ComposerStaticInit982e2bb6ee040fabbe21d48a054747f4
 {
     public static $files = array (
         'a0edc8309cc5e1d60e3047b5df6b7052' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/functions_include.php',
         'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
-        '5255c38a0faeba867671b61dfda6d864' => __DIR__ . '/..' . '/paragonie/random_compat/lib/random.php',
+        'decc78cc4436b1292c6c0d151b19445c' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/bootstrap.php',
     );
 
     public static $prefixLengthsPsr4 = array (
-        'R' => 
+        'p' => 
         array (
-            'Ramsey\\Uuid\\' => 12,
+            'phpseclib\\' => 10,
         ),
         'P' => 
         array (
@@ -33,6 +33,8 @@ class ComposerStaticInite6f0cd987c420f087ac45a1a4553774c
             'GuzzleHttp\\Psr7\\' => 16,
             'GuzzleHttp\\Promise\\' => 19,
             'GuzzleHttp\\' => 11,
+            'Google\\Cloud\\Core\\' => 18,
+            'Google\\Cloud\\BigQuery\\' => 22,
             'Google\\Cloud\\' => 13,
             'Google\\Auth\\' => 12,
         ),
@@ -43,9 +45,9 @@ class ComposerStaticInite6f0cd987c420f087ac45a1a4553774c
     );
 
     public static $prefixDirsPsr4 = array (
-        'Ramsey\\Uuid\\' => 
+        'phpseclib\\' => 
         array (
-            0 => __DIR__ . '/..' . '/ramsey/uuid/src',
+            0 => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib',
         ),
         'Psr\\Log\\' => 
         array (
@@ -75,6 +77,14 @@ class ComposerStaticInite6f0cd987c420f087ac45a1a4553774c
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
+        'Google\\Cloud\\Core\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/google/cloud-core',
+        ),
+        'Google\\Cloud\\BigQuery\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/google/cloud-bigquery',
+        ),
         'Google\\Cloud\\' => 
         array (
             0 => __DIR__ . '/..' . '/google/cloud/src',
@@ -95,6 +105,17 @@ class ComposerStaticInite6f0cd987c420f087ac45a1a4553774c
             'Rize\\UriTemplate' => 
             array (
                 0 => __DIR__ . '/..' . '/rize/uri-template/src',
+            ),
+        ),
+        'G' => 
+        array (
+            'Google_Service_' => 
+            array (
+                0 => __DIR__ . '/..' . '/google/apiclient-services/src',
+            ),
+            'Google_' => 
+            array (
+                0 => __DIR__ . '/..' . '/google/apiclient/src',
             ),
         ),
     );
@@ -124,15 +145,17 @@ class ComposerStaticInite6f0cd987c420f087ac45a1a4553774c
         'Google\\Auth\\Subscriber\\AuthTokenSubscriber' => __DIR__ . '/..' . '/google/auth/src/Subscriber/AuthTokenSubscriber.php',
         'Google\\Auth\\Subscriber\\ScopedAccessTokenSubscriber' => __DIR__ . '/..' . '/google/auth/src/Subscriber/ScopedAccessTokenSubscriber.php',
         'Google\\Auth\\Subscriber\\SimpleSubscriber' => __DIR__ . '/..' . '/google/auth/src/Subscriber/SimpleSubscriber.php',
+        'Google_Service_Exception' => __DIR__ . '/..' . '/google/apiclient/src/Google/Service/Exception.php',
+        'Google_Service_Resource' => __DIR__ . '/..' . '/google/apiclient/src/Google/Service/Resource.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInite6f0cd987c420f087ac45a1a4553774c::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInite6f0cd987c420f087ac45a1a4553774c::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInite6f0cd987c420f087ac45a1a4553774c::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInite6f0cd987c420f087ac45a1a4553774c::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit982e2bb6ee040fabbe21d48a054747f4::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit982e2bb6ee040fabbe21d48a054747f4::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit982e2bb6ee040fabbe21d48a054747f4::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInit982e2bb6ee040fabbe21d48a054747f4::$classMap;
 
         }, null, ClassLoader::class);
     }

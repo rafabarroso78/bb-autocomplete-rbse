@@ -18,34 +18,41 @@
 namespace Google\Cloud\Datastore;
 
 use DomainException;
-use Google\Cloud\Core\ClientTrait;
+use Google\Cloud\ClientTrait;
 use Google\Cloud\Datastore\Connection\Rest;
 use Google\Cloud\Datastore\Query\GqlQuery;
 use Google\Cloud\Datastore\Query\Query;
 use Google\Cloud\Datastore\Query\QueryBuilder;
 use Google\Cloud\Datastore\Query\QueryInterface;
-use Google\Cloud\Core\Int64;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
-use Psr\Http\Message\StreamInterface;
 
 /**
- * Google Cloud Datastore is a highly-scalable NoSQL database for your
- * applications. Find more information at the
+ * Google Cloud Datastore client. Cloud Datastore is a highly-scalable NoSQL
+ * database for your applications.  Find more information at
  * [Google Cloud Datastore docs](https://cloud.google.com/datastore/docs/).
  *
- * Cloud Datastore supports
- * [multi-tenant](https://cloud.google.com/datastore/docs/concepts/multitenancy)
- * applications through use of data partitions. A partition ID can be supplied
- * when creating an instance of Cloud Datastore, and will be used in all
- * operations executed in that instance.
+ * Cloud Datastore supports [multi-tenant](https://cloud.google.com/datastore/docs/concepts/multitenancy) applications
+ * through use of data partitions. A partition ID can be supplied when creating an instance of Cloud Datastore, and will
+ * be used in all operations executed in that instance.
  *
  * To enable the
  * [Google Cloud Datastore Emulator](https://cloud.google.com/datastore/docs/tools/datastore-emulator),
- * set the [`DATASTORE_EMULATOR_HOST`](https://goo.gl/vCVZrY) environment variable.
+ * set the
+ * [`PUBSUB_EMULATOR_HOST`](https://cloud.google.com/datastore/docs/tools/datastore-emulator#setting_environment_variables)
+ * environment variable.
  *
  * Example:
  * ```
+ * use Google\Cloud\ServiceBuilder;
+ *
+ * $cloud = new ServiceBuilder();
+ *
+ * $datastore = $cloud->datastore();
+ * ```
+ *
+ * ```
+ * // DatastoreClient can be instantiated directly.
  * use Google\Cloud\Datastore\DatastoreClient;
  *
  * $datastore = new DatastoreClient();
@@ -53,30 +60,32 @@ use Psr\Http\Message\StreamInterface;
  *
  * ```
  * // Multi-tenant applications can supply a namespace ID.
- * use Google\Cloud\Datastore\DatastoreClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $datastore = new DatastoreClient([
+ * $cloud = new ServiceBuilder();
+ *
+ * $datastore = $cloud->datastore([
+ *     'projectId' => 'my-awesome-project',
  *     'namespaceId' => 'my-application-namespace'
  * ]);
  * ```
  *
  * ```
  * // Using the Datastore Emulator
- * use Google\Cloud\Datastore\DatastoreClient;
+ * use Google\Cloud\ServiceBuilder;
  *
  * // Be sure to use the port specified when starting the emulator.
  * // `8900` is used as an example only.
  * putenv('DATASTORE_EMULATOR_HOST=http://localhost:8900');
  *
- * $datastore = new DatastoreClient();
+ * $cloud = new ServiceBuilder();
+ * $datastore = $cloud->datastore();
  * ```
  */
 class DatastoreClient
 {
     use ClientTrait;
     use DatastoreTrait;
-
-    const VERSION = '1.0.0';
 
     const FULL_CONTROL_SCOPE = 'https://www.googleapis.com/auth/datastore';
 
@@ -110,9 +119,9 @@ class DatastoreClient
      *           requests specifically for authentication.
      *     @type callable $httpHandler A handler used to deliver Psr7 requests.
      *           Only valid for requests sent over REST.
-     *     @type array $keyFile The contents of the service account credentials
-     *           .json file retrieved from the Google Developer's Console.
-     *           Ex: `json_decode(file_get_contents($path), true)`.
+     *     @type string $keyFile The contents of the service account
+     *           credentials .json file retrieved from the Google Developers
+     *           Console.
      *     @type string $keyFilePath The full path to your service account
      *           credentials .json file retrieved from the Google Developers
      *           Console.
@@ -121,25 +130,24 @@ class DatastoreClient
      *     @type array $scopes Scopes to be used for the request.
      *     @type string $namespaceId Partitions data under a namespace. Useful for
      *           [Multitenant Projects](https://cloud.google.com/datastore/docs/concepts/multitenancy).
-     *     @type bool $returnInt64AsObject If true, 64 bit integers will be
-     *           returned as a {@see Google\Cloud\Core\Int64} object for 32 bit
-     *           platform compatibility. **Defaults to** false.
      * }
      * @throws \InvalidArgumentException
      */
     public function __construct(array $config = [])
     {
-        $config += [
-            'namespaceId' => null,
-            'returnInt64AsObject' => false,
-            'scopes' => [self::FULL_CONTROL_SCOPE]
+        $config = $config + [
+            'namespaceId' => null
         ];
+
+        if (!isset($config['scopes'])) {
+            $config['scopes'] = [self::FULL_CONTROL_SCOPE];
+        }
 
         $this->connection = new Rest($this->configureAuthentication($config));
 
         // The second parameter here should change to a variable
         // when gRPC support is added for variable encoding.
-        $this->entityMapper = new EntityMapper($this->projectId, true, $config['returnInt64AsObject']);
+        $this->entityMapper = new EntityMapper($this->projectId, true);
         $this->operation = new Operation(
             $this->connection,
             $this->projectId,
@@ -260,17 +268,12 @@ class DatastoreClient
      * ```
      *
      * ```
-     * //[snippet=array]
-     * // Entity values can be assigned and accessed via the array syntax.
+     * // Both of the following has the identical effect as the previous example.
      * $entity = $datastore->entity($key);
      *
      * $entity['firstName'] = 'Bob';
      * $entity['lastName'] = 'Testguy';
-     * ```
      *
-     * ```
-     * //[snippet=object_accessor]
-     * // Entity values can also be assigned and accessed via an object syntax.
      * $entity = $datastore->entity($key);
      *
      * $entity->firstName = 'Bob';
@@ -278,13 +281,11 @@ class DatastoreClient
      * ```
      *
      * ```
-     * //[snippet=incomplete]
      * // Entities can be created with a Kind only, for inserting into datastore
      * $entity = $datastore->entity('Person');
      * ```
      *
      * ```
-     * //[snippet=custom_class]
      * // Entities can be custom classes extending the built-in Entity class.
      * class Person extends Google\Cloud\Datastore\Entity
      * {}
@@ -297,7 +298,6 @@ class DatastoreClient
      * ```
      *
      * ```
-     * //[snippet=exclude_indexes]
      * // If you wish to exclude certain properties from datastore indexes,
      * // property names may be supplied in the method $options:
      *
@@ -363,29 +363,12 @@ class DatastoreClient
      * $blob = $datastore->blob(file_get_contents(__DIR__ .'/family-photo.jpg'));
      * ```
      *
-     * @param string|resource|StreamInterface $value The value to store in a blob.
+     * @param string|resource|StreamInterface $value
      * @return Blob
      */
     public function blob($value)
     {
         return new Blob($value);
-    }
-
-    /**
-     * Create an Int64 object. This can be used to work with 64 bit integers as
-     * a string value while on a 32 bit platform.
-     *
-     * Example:
-     * ```
-     * $int64 = $datastore->int64('9223372036854775807');
-     * ```
-     *
-     * @param string $value
-     * @return Int64
-     */
-    public function int64($value)
-    {
-        return new Int64($value);
     }
 
     /**
@@ -485,8 +468,6 @@ class DatastoreClient
      * $datastore->insert($entity);
      * ```
      *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
-     *
      * @param Entity $entity The entity to be inserted.
      * @param array $options [optional] Configuration options.
      * @return string The entity version.
@@ -517,8 +498,6 @@ class DatastoreClient
      * $datastore->insertBatch($entities);
      * ```
      *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
-     *
      * @param Entity[] $entities The entities to be inserted.
      * @param array $options [optional] Configuration options.
      * @return array [Response Body](https://cloud.google.com/datastore/reference/rest/v1/projects/commit#response-body)
@@ -546,12 +525,11 @@ class DatastoreClient
      *
      * Example:
      * ```
+     * $entity = $datastore->lookup($datastore->key('Person', 'Bob'));
      * $entity['firstName'] = 'John';
      *
      * $datastore->update($entity);
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param Entity $entity The entity to be updated.
      * @param array $options [optional] {
@@ -592,8 +570,6 @@ class DatastoreClient
      *
      * $datastore->updateBatch($entities);
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param Entity[] $entities The entities to be updated.
      * @param array $options [optional] {
@@ -641,13 +617,11 @@ class DatastoreClient
      *
      * Example:
      * ```
-     * $key = $datastore->key('Person', 'Bob');
+     * $key = $datastore->key('Person', 'Bob']);
      * $entity = $datastore->entity($key, ['firstName' => 'Bob']);
      *
      * $datastore->upsert($entity);
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param Entity $entity The entity to be upserted.
      * @param array $options [optional] Configuration Options.
@@ -682,14 +656,12 @@ class DatastoreClient
      * ];
      *
      * $entities = [
-     *     $datastore->entity($keys[0], ['firstName' => 'Bob']),
-     *     $datastore->entity($keys[1], ['firstName' => 'John'])
+     *     $datastore->entity($key[0], ['firstName' => 'Bob']),
+     *     $datastore->entity($key[1], ['firstName' => 'John'])
      * ];
      *
      * $datastore->upsertBatch($entities);
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param Entity[] $entities The entities to be upserted.
      * @param array $options [optional] Configuration Options.
@@ -717,8 +689,6 @@ class DatastoreClient
      *
      * $datastore->delete($key);
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param Key $key The identifier to delete.
      * @param array $options [optional] {
@@ -753,8 +723,6 @@ class DatastoreClient
      *
      * $datastore->deleteBatch($keys);
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param Key[] $keys The identifiers to delete.
      * @param array $options [optional] {
@@ -797,8 +765,6 @@ class DatastoreClient
      * }
      * ```
      *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/lookup Lookup API documentation
-     *
      * @param Key $key The identifier to use to locate a desired entity.
      * @param array $options [optional] {
      *     Configuration Options
@@ -833,14 +799,12 @@ class DatastoreClient
      *     $datastore->key('Person', 'John')
      * ];
      *
-     * $entities = $datastore->lookupBatch($keys);
+     * $entities = $datastore->lookup($keys);
      *
      * foreach ($entities['found'] as $entity) {
-     *     echo $entity['firstName'] . PHP_EOL;
+     *     echo $entity['firstName'];
      * }
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/lookup Lookup API documentation
      *
      * @param Key[] $key The identifiers to look up.
      * @param array $options [optional] {
@@ -897,7 +861,6 @@ class DatastoreClient
      * ```
      *
      * ```
-     * //[snippet=bindings]
      * // Literals must be provided as bound parameters by default:
      * $query = $datastore->gqlQuery('SELECT * FROM Companies WHERE companyName = @companyName', [
      *     'bindings' => [
@@ -907,7 +870,6 @@ class DatastoreClient
      * ```
      *
      * ```
-     * //[snippet=pos_bindings]
      * // Positional binding is also supported:
      * $query = $datastore->gqlQuery('SELECT * FROM Companies WHERE companyName = @1 LIMIT 1', [
      *     'bindings' => [
@@ -917,7 +879,6 @@ class DatastoreClient
      * ```
      *
      * ```
-     * //[snippet=literals]
      * // While not recommended, you can use literals in your query string:
      * $query = $datastore->gqlQuery("SELECT * FROM Companies WHERE companyName = 'Google'", [
      *     'allowLiterals' => true
@@ -960,8 +921,6 @@ class DatastoreClient
      * }
      * ```
      *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/runQuery RunQuery API documentation
-     *
      * @param QueryInterface $query A query object.
      * @param array $options [optional] {
      *     Configuration Options
@@ -972,7 +931,7 @@ class DatastoreClient
      *     @type string $readConsistency See
      *           [ReadConsistency](https://cloud.google.com/datastore/reference/rest/v1/ReadOptions#ReadConsistency).
      * }
-     * @return EntityIterator<Google\Cloud\Datastore\Entity>
+     * @return \Generator<Google\Cloud\Datastore\Entity>
      */
     public function runQuery(QueryInterface $query, array $options = [])
     {

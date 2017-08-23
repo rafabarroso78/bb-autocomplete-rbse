@@ -17,178 +17,53 @@
 
 namespace Google\Cloud\Dev\DocGenerator\Parser;
 
-use Google\Cloud\Dev\DocBlockStripSpaces;
-use Google\Cloud\Dev\DocGenerator\ReflectorRegister;
-use Google\Cloud\Dev\GetComponentsTrait;
-use phpDocumentor\Reflection\ClassReflector;
+use phpDocumentor\Reflection\DocBlock;
 use phpDocumentor\Reflection\DocBlock\Description;
-use phpDocumentor\Reflection\DocBlock\Tag;
 use phpDocumentor\Reflection\DocBlock\Tag\SeeTag;
 use phpDocumentor\Reflection\FileReflector;
-use phpDocumentor\Reflection\InterfaceReflector;
-use phpDocumentor\Reflection\TraitReflector;
 
 class CodeParser implements ParserInterface
 {
-    use GetComponentsTrait;
-
-    const CLASS_TYPE_REGEX = '/[Generator\<]?(Google\\\Cloud\\\[\w\\\]{0,})[\>]?[\[\]]?/';
-    const SNIPPET_NAME_REGEX = '/\/\/\s?\[snippet\=(\w{0,})\]/';
-
-    private static $composerFiles = [];
-
     private $path;
-    private $fileName;
-    private $register;
+    private $outputName;
+    private $reflector;
     private $markdown;
-    private $projectRoot;
-    private $externalTypes;
-    private $componentId;
-    private $manifestPath;
-    private $release;
-    private $isComponent;
-    private $basePath;
 
-    public function __construct(
-        $path,
-        $fileName,
-        ReflectorRegister $register,
-        $projectRoot,
-        $componentId,
-        $manifestPath,
-        $release,
-        $basePath,
-        $isComponent = true
-    ) {
+    public function __construct($path, $outputName, FileReflector $reflector)
+    {
         $this->path = $path;
-        $this->fileName = $fileName;
-        $this->register = $register;
+        $this->outputName = $outputName;
+        $this->reflector = $reflector;
         $this->markdown = \Parsedown::instance();
-        $this->projectRoot = $projectRoot;
-        $this->externalTypes = json_decode(file_get_contents($this->projectRoot . '/docs/external-classes.json'), true);
-        $this->componentId = $componentId;
-        $this->manifestPath = $manifestPath;
-        $this->release = $release;
-        $this->basePath = $basePath;
-        $this->isComponent = $isComponent;
     }
 
     public function parse()
     {
-        list($fileReflector, $reflector) = $this->register->getReflectorsFromFileName($this->path);
-
-        return $reflector
-            ? $this->buildDocument($fileReflector, $reflector)
-            : null;
+        $this->reflector->process();
+        return $this->buildDocument($this->getReflector($this->reflector));
     }
 
-    private function buildInfo($fileReflector, $reflector)
+    private function getReflector($fileReflector)
     {
-        $classInfo = [
-            'methods' => [],
-            'traits' => [],
-            'parents' => [],
-            'interfaces' => [],
-            'interfaceMethods' => [],
-        ];
+        if (isset($fileReflector->getClasses()[0])) {
+            return $fileReflector->getClasses()[0];
+        }
 
-        $this->buildClassInfoRecursive($fileReflector, $reflector, $classInfo);
+        if (isset($fileReflector->getInterfaces()[0])) {
+            return $fileReflector->getInterfaces()[0];
+        }
 
-        return $classInfo;
+        if (isset($fileReflector->getTraits()[0])) {
+            return $fileReflector->getTraits()[0];
+        }
+
+        throw new \Exception('Could not get reflector for '. $this->outputName);
     }
 
-    private function buildClassInfoRecursive($fileReflector, $reflector, &$classInfo)
-    {
-        if (is_null($fileReflector) || is_null($reflector)) {
-            return;
-        }
-
-        $methods = $this->buildMethodInfo($fileReflector, $reflector);
-
-        $isInternal = substr_compare($reflector->getName(), '\Google\Cloud', 0, 13) === 0;
-        if ($isInternal) {
-            $classInfo['methods'] += $methods;
-        }
-
-        foreach ($reflector->getTraits() as $trait) {
-            list($traitFileReflector, $traitReflector) = $this->register->getReflectors($trait);
-            $this->buildClassInfoRecursive($traitFileReflector, $traitReflector, $classInfo);
-        }
-
-        foreach ($reflector->getInterfaces() as $interface) {
-            list($interfaceFileReflector, $interfaceReflector) = $this->register->getReflectors($interface);
-            $this->buildInterfaceInfoRecursive($interfaceFileReflector, $interfaceReflector, $classInfo);
-        }
-
-        $parent = $reflector->getParentClass();
-        if (!empty($parent)) {
-            list($parentFileReflector, $parentReflector) = $this->register->getReflectors($parent);
-            $this->buildClassInfoRecursive($parentFileReflector, $parentReflector, $classInfo);
-            // Add $parent to array after calling getMethodsRecursive so that parents are correctly
-            // ordered
-            $classInfo['parents'][] = $parent;
-        }
-    }
-
-    private function buildInterfaceInfo($fileReflector, $reflector)
-    {
-        $classInfo = [
-            'interfaces' => [],
-            'interfaceMethods' => [],
-        ];
-
-        $this->buildInterfaceInfoRecursive($fileReflector, $reflector, $classInfo);
-
-        return $classInfo;
-    }
-
-    private function buildInterfaceInfoRecursive($fileReflector, $reflector, &$classInfo)
-    {
-        if (is_null($fileReflector) || is_null($reflector)) {
-            return false;
-        }
-
-        $isInternal = substr_compare($reflector->getName(), '\Google\Cloud', 0, 13) === 0;
-        if ($isInternal) {
-            $classInfo['interfaceMethods'] += $this->buildMethodInfo($fileReflector, $reflector);
-        }
-
-        // Add parent interfaces to array before calling getMethodsRecursive to use PHP array
-        // ordering, so that parent interfaces are before more deeply nested interfaces
-        $classInfo['interfaces'] += $reflector->getParentInterfaces();
-        foreach ($reflector->getParentInterfaces() as $parentInterface) {
-            list($parentFileReflector, $parentReflector) = $this->register->getReflectors($parentInterface);
-            $this->buildInterfaceInfoRecursive($parentFileReflector, $parentReflector, $classInfo);
-        }
-    }
-
-    private function buildMethodInfo($fileReflector, $reflector)
-    {
-        $methods = [];
-        foreach ($reflector->getMethods() as $name => $method) {
-            if ($method->getVisibility() !== 'public') {
-                continue;
-            }
-            $methods[$name] = [
-                'methodReflector' => $method,
-                'source' => $this->getPath($fileReflector),
-                'container' => $reflector->getName(),
-            ];
-        }
-        return $methods;
-    }
-
-    private function getPath($fileReflector)
-    {
-        $fileSplit = explode($this->basePath, trim($fileReflector->getFileName(), '/'));
-        return 'src/' . trim($fileSplit[1], '/');
-    }
-
-    private function buildDocument($fileReflector, $reflector)
+    private function buildDocument($reflector)
     {
         $name = $reflector->getShortName();
-        $fullName = $reflector->getName();
-        $id = substr($fullName, 14);
+        $id = substr($reflector->getName(), 14);
         $id = str_replace('\\', '/', $id);
         // @todo see if there is a better way to determine the type
         $parts = explode('_', get_class($reflector->getNode()));
@@ -202,63 +77,33 @@ class CodeParser implements ParserInterface
                 return ($tag->getName() === 'method');
             });
 
-            $magic = $this->buildMagicMethods($magicMethods, $fullName);
+            $magic = $this->buildMagicMethods($magicMethods, $name);
         }
 
+        $methods = $reflector->getMethods();
+
         if (is_null($docBlock)) {
-            throw new \Exception(sprintf('%s has no description', $fullName));
+            throw new \Exception(sprintf('%s has no description', $reflector->getName()));
         }
 
         $split = $this->splitDescription($docBlock->getText());
-
-        if ($this->isInterface($reflector)) {
-            $classInfo = $this->buildInterfaceInfo($fileReflector, $reflector);
-            $description = $this->buildInterfaceDescription($classInfo, $docBlock, $split['description'], $reflector);
-            $methods = $this->buildMethods($classInfo['interfaceMethods'], $fullName);
-        } else {
-            $classInfo = $this->buildInfo($fileReflector, $reflector);
-            $description = $this->buildClassDescription($classInfo, $docBlock, $split['description'], $reflector);
-            $methods = $this->buildMethods($classInfo['methods'], $fullName);
-        }
 
         return [
             'id' => strtolower($id),
             'type' => strtolower($type),
             'title' => $reflector->getNamespace() . '\\' . $name,
             'name' => $name,
-            'description' => $description,
+            'description' => $this->buildDescription($docBlock, $split['description']),
             'examples' => $this->buildExamples($split['examples']),
             'resources' => $this->buildResources($docBlock->getTagsByName('see')),
-            'methods' => array_merge($methods, $magic)
+            'methods' => array_merge(
+                $this->buildMethods($methods, $name),
+                $magic
+            )
         ];
     }
 
-    private function isInterface($reflector)
-    {
-        return ($reflector instanceof InterfaceReflector) &&
-                !($reflector instanceof ClassReflector);
-    }
-
-    private function buildDescription($docBlock, $content = null, $reflector = null)
-    {
-        return $this->markdown->parse($this->buildDescriptionContent($docBlock, $content, $reflector));
-    }
-
-    private function buildClassDescription($classInfo, $docBlock, $content = null, $reflector = null)
-    {
-        $content = $this->buildDescriptionContent($docBlock, $content, $reflector);
-        $content .= $this->buildInheritDoc($classInfo);
-        return $this->markdown->parse($content);
-    }
-
-    private function buildInterfaceDescription($classInfo, $docBlock, $content = null, $reflector = null)
-    {
-        $content = $this->buildDescriptionContent($docBlock, $content, $reflector);
-        $content .= $this->buildInterfaceInheritDoc($classInfo);
-        return $this->markdown->parse($content);
-    }
-
-    private function buildDescriptionContent($docBlock, $content = null, $reflector = null)
+    private function buildDescription($docBlock, $content = null)
     {
         if ($content === null) {
             $content = $docBlock->getText();
@@ -270,30 +115,11 @@ class CodeParser implements ParserInterface
         if (count($parsedContents) > 1) {
             // convert inline {@see} tag to custom type link
             foreach ($parsedContents as &$part) {
-                if ($part instanceof SeeTag) {
-                    $part = $this->buildReference($part->getReference(), $part);
-                } elseif ($this->isInheritDocTag($part)) {
-                    if ($reflector === null) {
-                        throw new \Exception(sprintf(
-                            "Inherit Doc tag ({@inheritdoc}) is only supported when \$reflector is not null.\nContext:\n%s",
-                            $content));
+                if ($part instanceof Seetag) {
+                    $reference = $part->getReference();
+                    if (substr_compare($reference, 'Google\Cloud', 0, 12) === 0) {
+                        $part = $this->buildLink($reference);
                     }
-
-                    if (!($reflector instanceof ClassReflector)) {
-                        throw new \Exception(sprintf(
-                            "Inherit Doc tag ({@inheritdoc}) is not supported for reflector type %s (found in: %s)."
-                            . "\nContext:\n%s", get_class($reflector), $reflector->getName(), $content));
-                    }
-
-                    $parentClass = $reflector->getParentClass();
-                    if (empty($parentClass)) {
-                        throw new \Exception(sprintf('%s has {@inheritdoc} tag but no parent class', $reflector->getName()));
-                    }
-                    list($parentFileReflector, $parentReflector) = $this->register->getReflectors($parentClass);
-
-                    $parentDocBlock = $parentReflector->getDocBlock();
-                    $parentDocSplit = $this->splitDescription($parentDocBlock->getText());
-                    $part = $this->buildDescriptionContent($parentDocBlock, $parentDocSplit['description'], $parentReflector);
                 }
             }
 
@@ -301,59 +127,13 @@ class CodeParser implements ParserInterface
         }
 
         $content = str_ireplace('[optional]', '', $content);
-        return $content;
-    }
-
-    private function isInheritDocTag($tag)
-    {
-        return $tag instanceof Tag && ($tag->getName() == 'inheritDoc' || $tag->getName() == 'inheritdoc');
-    }
-
-    private function buildReference($reference, $default = null)
-    {
-        if ($this->hasInternalType($reference)) {
-            return $this->buildLink($reference);
-        } elseif ($this->hasExternalType($reference)) {
-            return $this->buildExternalType($reference);
-        } else {
-            return isset($default) ? $default : $reference;
-        }
-    }
-
-    private function buildInheritDoc($classInfo)
-    {
-        $content = '';
-        if (count($classInfo['parents']) > 0) {
-            $content .= $this->implodeInheritDocLinks(" > ", $classInfo['parents'], "Extends");
-        }
-        if (count($classInfo['interfaces']) > 0) {
-            $content .= $this->implodeInheritDocLinks(", ", $classInfo['interfaces'], "Implements");
-        }
-
-        return $content;
-    }
-
-    private function buildInterfaceInheritDoc($classInfo)
-    {
-        $content = '';
-        if (count($classInfo['interfaces']) > 0) {
-            $content .= $this->implodeInheritDocLinks(", ", $classInfo['interfaces'], "Extends");
-        }
-
-        return $content;
-    }
-
-    private function implodeInheritDocLinks($glue, $pieces, $prefix)
-    {
-        return "\n\n$prefix " . implode($glue, array_map([$this, 'buildReference'], $pieces));
+        return $this->markdown->parse($content);
     }
 
     private function buildMethods($methods, $className)
     {
         $methodArray = [];
-        foreach ($methods as $name => $methodInfo) {
-            $method = $methodInfo['methodReflector'];
-
+        foreach ($methods as $name => $method) {
             if ($method->getVisibility() !== 'public') {
                 continue;
             }
@@ -371,7 +151,7 @@ class CodeParser implements ParserInterface
                 }
             }
 
-            $methodArray[] = $this->buildMethod($method, $methodInfo, $className);
+            $methodArray[] = $this->buildMethod($method);
         }
 
         return $methodArray;
@@ -392,7 +172,7 @@ class CodeParser implements ParserInterface
         return $methodArray;
     }
 
-    private function buildMethod($method, $methodInfo, $className)
+    private function buildMethod($method)
     {
         $docBlock = $method->getDocBlock();
         $fullDescription = $docBlock->getText();
@@ -400,21 +180,17 @@ class CodeParser implements ParserInterface
         $params = $docBlock->getTagsByName('param');
         $exceptions = $docBlock->getTagsByName('throws');
         $returns = $docBlock->getTagsByName('return');
+        $docText = '';
         $examples = null;
 
         $split = $this->splitDescription($fullDescription);
-
-        $description = $this->buildDescription($docBlock, $split['description'], $method);
-        if ($methodInfo['container'] !== $className) {
-            $description .= "\n\nImplemented in " . $this->buildReference($methodInfo['container']);
-        }
 
         return [
             'id' => $method->getName(),
             'type' => $method->getName() === '__construct' ? 'constructor' : 'instance',
             'name' => $method->getName(),
-            'source' => $methodInfo['source'] . '#L' . $method->getLineNumber(),
-            'description' => $description,
+            'source' => $this->outputName . '#L' . $method->getLineNumber(),
+            'description' => $this->buildDescription($docBlock, $split['description']),
             'examples' => $this->buildExamples($split['examples']),
             'resources' => $this->buildResources($resources),
             'params' => $this->buildParams($params),
@@ -431,6 +207,7 @@ class CodeParser implements ParserInterface
         $params = $docBlock->getTagsByName('param');
         $exceptions = $docBlock->getTagsByName('throws');
         $returns = $docBlock->getTagsByName('return');
+        $docText = '';
         $examples = null;
 
         $parts = explode('Example:', $fullDescription);
@@ -445,8 +222,8 @@ class CodeParser implements ParserInterface
             'id' => $magicMethod->getMethodName(),
             'type' => $magicMethod->getMethodName() === '__construct' ? 'constructor' : 'instance',
             'name' => $magicMethod->getMethodName(),
-            'source' => $this->getSource(),
-            'description' => $this->buildDescription($docBlock, $docText, $magicMethod),
+            'source' => $this->outputName,
+            'description' => $this->buildDescription($docBlock, $docText),
             'examples' => $this->buildExamples($examples),
             'resources' => $this->buildResources($resources),
             'params' => $this->buildParams($params),
@@ -473,8 +250,7 @@ class CodeParser implements ParserInterface
                 continue;
             }
 
-            $example = preg_replace(self::SNIPPET_NAME_REGEX, '', $example);
-            $lines = explode(PHP_EOL, trim($example));
+            $lines = explode(PHP_EOL, $example);
 
             // strip the syntax highlighting, it won't be used in the doc site
             if (substr($lines[0], 0, 3) === 'php') {
@@ -495,7 +271,7 @@ class CodeParser implements ParserInterface
 
             $examplesArray[] = [
                 'caption' => $caption,
-                'code' => trim(implode(PHP_EOL, $lines))
+                'code' => implode(PHP_EOL, $lines)
             ];
         }
 
@@ -531,7 +307,7 @@ class CodeParser implements ParserInterface
         foreach ($params as $param) {
             $description = $param->getDescription();
 
-            $descriptionString = $this->buildDescription($param->getDocBlock(), $description, $param);
+            $descriptionString = $this->buildDescription($param->getDocBlock(), $description);
             $nestedParamsArray = [];
 
             if (strpos($param->getType(), 'array') === 0 && $this->hasNestedParams($description)) {
@@ -541,7 +317,7 @@ class CodeParser implements ParserInterface
                 $nestedParamString = trim(array_shift($nestedParams));
                 $nestedParamsArray = $this->buildNestedParams($nestedParams, $param);
 
-                $descriptionString = $this->buildDescription($param->getDocBlock(), $nestedParamString, $param);
+                $descriptionString = $this->buildDescription($param->getDocBlock(), $nestedParamString);
             }
 
             $varName = substr($param->getVariableName(), 1);
@@ -583,7 +359,7 @@ class CodeParser implements ParserInterface
 
             $paramsArray[] = [
                 'name' => substr($origParam->getVariableName(), 1) . '.' . $name,
-                'description' => $this->buildDescription($origParam->getDocBlock(), $description, $origParam),
+                'description' => $this->buildDescription($origParam->getDocBlock(), $description),
                 'types' => $this->handleTypes($types),
                 'optional' => null, // @todo
                 'nullable' => null //@todo
@@ -635,159 +411,52 @@ class CodeParser implements ParserInterface
         $returnsArray = [];
 
         foreach ($returns as $return) {
-            $context = $return->getDocBlock()->getContext();
-            $aliases = $context ? $context->getNamespaceAliases() : [];
-
             $returnsArray[] = [
-                'types' => $this->handleTypes($return->getTypes(), $aliases),
-                'description' => $this->buildDescription(null, $return->getDescription(), $return)
+                'types' => $this->handleTypes($return->getTypes()),
+                'description' => $this->buildDescription(null, $return->getDescription())
             ];
         }
 
         return $returnsArray;
     }
 
-    private function handleTypes($types, array $aliases = [])
+    private function handleTypes($types)
     {
-        $res = [];
-        foreach ($types as $type) {
-            $matches = [];
-
-            if (preg_match('/\\\\?(.*?)\<(.*?)\>/', $type, $matches)) {
-                $matches[1] = $this->resolveTypeAlias($matches[1], $aliases);
-                $matches[2] = $this->resolveTypeAlias($matches[2], $aliases);
-
-                $iteratorType = $matches[1];
-                if (strpos($matches[1], '\\') !== FALSE) {
-                    $matches[1] = $this->buildLink($matches[1]);
-                }
-
-                $typeLink = $matches[2];
-                if (strpos($matches[2], '\\') !== FALSE) {
-                    $matches[2] = $this->buildLink($matches[2]);
-                }
-
-                $type = sprintf(htmlentities('%s<%s>'), $matches[1], $matches[2]);
-            } else {
-                $type = $this->buildReference($type);
+        foreach ($types as &$type) {
+            // object is a PHPDoc keyword so it is not capable of detecting the context
+            // https://github.com/phpDocumentor/ReflectionDocBlock/blob/2.0.4/src/phpDocumentor/Reflection/DocBlock/Type/Collection.php#L37
+            if ($type === 'Object') {
+                $type = '\Google\Cloud\Storage\Object';
             }
 
-            $res[] = $type;
-        }
+            if (substr_compare($type, '\Google\Cloud', 0, 13) === 0) {
+                $type = $this->buildLink($type);
+            }
 
-        return $res;
-    }
-
-    private function resolveTypeAlias($type, array $aliases)
-    {
-        $pieces = explode('\\', $type);
-        $basename = array_pop($pieces);
-        if (array_key_exists($basename, $aliases)) {
-            $type = $aliases[$basename];
-        }
-
-        return $type;
-    }
-
-    private function hasInternalType($type)
-    {
-        $type = trim($type, '\\');
-        if (substr_compare($type, 'Google\\Cloud', 0, 12) === 0) {
             $matches = [];
-            preg_match(self::CLASS_TYPE_REGEX, $type, $matches);
-            $type = $matches[1];
-            $file = $this->projectRoot . '/src' . str_replace('\\', '/', substr($type, 12)) . '.php';
-            return file_exists($file);
+            if (preg_match('/\\\\?Generator\<(.*?)\>/', $type, $matches)) {
+                $typeLink = $matches[1];
+                if (strpos($matches[1], '\\') !== FALSE) {
+                    $typeLink = $this->buildLink($matches[1]);
+                }
+
+                $type = sprintf(htmlentities('Generator<%s>'), $typeLink);
+            }
         }
 
-        return false;
-    }
-
-    private function hasExternalType($type)
-    {
-        $type = trim($type, '\\');
-        $types = array_filter($this->externalTypes, function ($external) use ($type) {
-            return (strpos($type, $external['name']) !== false);
-        });
-
-        if (count($types) === 0) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private function buildExternalType($type)
-    {
-        $type = trim($type, '\\');
-        $types = array_values(array_filter($this->externalTypes, function ($external) use ($type) {
-            return (strpos($type, $external['name']) !== false);
-        }));
-
-        $external = $types[0];
-
-        $href = sprintf($external['uri'], str_replace($external['name'], '', $type));
-        return sprintf(
-            '<a href="%s" target="_blank">%s</a>',
-            $href,
-            $type
-        );
+        return $types;
     }
 
     private function buildLink($content)
     {
-        $componentId = null;
-        if ($this->isComponent && substr_compare(trim($content, '\\'), 'Google\Cloud', 0, 12) === 0) {
-            try {
-                $matches = [];
-                preg_match(self::CLASS_TYPE_REGEX, $content, $matches);
-                $ref = new \ReflectionClass($matches[1]);
-            } catch (\ReflectionException $e) {
-                throw new \Exception(sprintf(
-                    'Reflection Exception: %s in %s. Given class was %s',
-                    $e->getMessage(),
-                    realpath($this->path),
-                    $content
-                ));
-            }
-
-            $recurse = true;
-            $file = $ref->getFileName();
-
-            if (strpos($file, dirname(realpath($this->path))) !== false) {
-                $recurse = false;
-            }
-
-            do {
-                $composer = dirname($file) .'/composer.json';
-                if (file_exists($composer) && $component = $this->isComponent($composer)) {
-                    $componentId = $component['id'];
-                    if ($componentId === $this->componentId) {
-                        $componentId = null;
-                    }
-                    $recurse = false;
-                } elseif (trim($file, '/') === trim($this->projectRoot, '/')) {
-                    $recurse = false;
-                } else {
-                    $file = dirname($file);
-                }
-            } while($recurse);
+        if ($content[0] === '\\') {
+            $content = substr($content, 1);
         }
-
-        $content = trim($content, '\\');
 
         $displayName = $content;
         $content = substr($content, 13);
         $parts = explode('::', $content);
         $type = strtolower(str_replace('\\', '/', $parts[0]));
-
-        if ($componentId) {
-            $version = ($this->release)
-                ? $this->getComponentVersion($this->manifestPath, $componentId)
-                : 'master';
-
-            $type = $componentId .'/'. $version .'/'. $type;
-        }
 
         $openTag = '<a data-custom-type="' . $type . '"';
 
@@ -815,25 +484,24 @@ class CodeParser implements ParserInterface
             'examples' => $examples
         ];
     }
+}
 
-    private function isComponent($composerPath)
+class DocBlockStripSpaces extends DocBlock
+{
+    /**
+     * Strips extra whitespace from the DocBlock comment.
+     *
+     * @param string $comment String containing the comment text.
+     * @param int $spaces The number of spaces to strip.
+     *
+     * @return string
+     */
+    public function cleanInput($comment, $spaces = 4)
     {
-        if (isset(self::$composerFiles[$composerPath])) {
-            $contents = self::$composerFiles[$composerPath];
-        } else {
-            $contents = json_decode(file_get_contents($composerPath), true);
-            self::$composerFiles[$composerPath] = $contents;
-        }
+        $lines = array_map(function ($line) use ($spaces) {
+            return substr($line, $spaces);
+        }, explode(PHP_EOL, $comment));
 
-        if (isset($contents['extra']['component'])) {
-            return $contents['extra']['component'];
-        }
-
-        return false;
-    }
-
-    private function getSource()
-    {
-        return 'src' . explode('src', $this->path)[1];
+        return trim(implode(PHP_EOL, $lines));
     }
 }

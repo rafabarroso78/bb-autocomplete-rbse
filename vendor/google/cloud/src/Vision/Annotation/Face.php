@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Vision\Annotation;
 
-use Google\Cloud\Core\CallTrait;
+use Google\Cloud\CallTrait;
 use Google\Cloud\Vision\Annotation\Face\Landmarks;
 
 /**
@@ -25,12 +25,12 @@ use Google\Cloud\Vision\Annotation\Face\Landmarks;
  *
  * Example:
  * ```
- * use Google\Cloud\Vision\VisionClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $vision = new VisionClient();
+ * $cloud = new ServiceBuilder();
+ * $vision = $cloud->vision();
  *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
- * $image = $vision->image($imageResource, [ 'FACE_DETECTION' ]);
+ * $image = $vision->image(fopen(__DIR__ .'/assets/family-photo.jpg', 'r'), [ 'FACE_DETECTION' ]);
  * $annotation = $vision->annotate($image);
  *
  * $faces = $annotation->faces();
@@ -202,10 +202,6 @@ use Google\Cloud\Vision\Annotation\Face\Landmarks;
  *
  *     @return array
  * }
- *
- * @codingStandardsIgnoreStart
- * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#faceannotation FaceAnnotation
- * @codingStandardsIgnoreEnd
  */
 class Face extends AbstractFeature
 {

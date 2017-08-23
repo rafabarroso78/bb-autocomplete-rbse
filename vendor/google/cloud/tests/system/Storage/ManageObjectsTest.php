@@ -19,10 +19,6 @@ namespace Google\Cloud\Tests\System\Storage;
 
 use Psr\Http\Message\StreamInterface;
 
-/**
- * @group storage
- * @group storage-object
- */
 class ManageObjectsTest extends StorageTestCase
 {
     public function testListsObjects()
@@ -34,7 +30,7 @@ class ManageObjectsTest extends StorageTestCase
         ];
 
         foreach ($objectsToCreate as $objectToCreate) {
-            self::$bucket->upload('somedata', ['name' => $objectToCreate]);
+            self::$deletionQueue[] = self::$bucket->upload('somedata', ['name' => $objectToCreate]);
         }
 
         $objects = self::$bucket->objects(['prefix' => self::TESTING_PREFIX]);
@@ -100,6 +96,7 @@ class ManageObjectsTest extends StorageTestCase
      */
     public function testComposeObjects($object)
     {
+        self::$deletionQueue[] = $object;
         $expectedContent = $object->downloadAsString();
         $expectedContent .= self::$object->downloadAsString();
         $name = uniqid(self::TESTING_PREFIX) . '.txt';
@@ -107,6 +104,7 @@ class ManageObjectsTest extends StorageTestCase
             [$object, self::$object],
             $name
         );
+        self::$deletionQueue[] = $composedObject;
 
         $this->assertEquals($name, $composedObject->name());
         $this->assertEquals($expectedContent, $composedObject->downloadAsString());
@@ -115,24 +113,29 @@ class ManageObjectsTest extends StorageTestCase
     public function testRotatesCustomerSuppliedEncrpytion()
     {
         $data = 'somedata';
-        $key = base64_encode(openssl_random_pseudo_bytes(32));
+        $key = openssl_random_pseudo_bytes(32);
+        $sha = hash('SHA256', $key, true);
         $options = [
             'name' => uniqid(self::TESTING_PREFIX),
-            'encryptionKey' => $key
+            'encryptionKey' => $key,
+            'encryptionKeySHA256' => $sha
         ];
         $object = self::$bucket->upload($data, $options);
+        self::$deletionQueue[] = $object;
 
-        $dkey = base64_encode(openssl_random_pseudo_bytes(32));
-        $dsha = base64_encode(hash('SHA256', base64_decode($dkey), true));
+        $dkey = openssl_random_pseudo_bytes(32);
+        $dsha = hash('SHA256', $dkey, true);
         $rewriteOptions = [
             'name' => uniqid(self::TESTING_PREFIX),
             'encryptionKey' => $key,
-            'destinationEncryptionKey' => $dkey
+            'encryptionKeySHA256' => $sha,
+            'destinationEncryptionKey' => $dkey,
+            'destinationEncryptionKeySHA256' => $dsha
         ];
 
         $rewrittenObject = $object->rewrite(self::$bucket, $rewriteOptions);
 
-        $this->assertEquals($dsha, $rewrittenObject->info()['customerEncryption']['keySha256']);
+        $this->assertEquals(base64_encode($dsha), $rewrittenObject->info()['customerEncryption']['keySha256']);
         $rewrittenObject->delete();
     }
 
@@ -161,22 +164,5 @@ class ManageObjectsTest extends StorageTestCase
     public function testReloadObject()
     {
         $this->assertEquals('storage#object', self::$object->reload()['kind']);
-    }
-
-    public function testStringNormalization()
-    {
-        $bucket = self::$client->bucket(self::NORMALIZATION_TEST_BUCKET);
-
-        $cases = [
-            ["Caf\xC3\xA9", "Normalization Form C"],
-            ["Cafe\xCC\x81", "Normalization Form D"],
-        ];
-
-        foreach ($cases as list($name, $expectedContent)) {
-            $object = $bucket->object($name);
-            $actualContent = $object->downloadAsString();
-
-            $this->assertSame($expectedContent, $actualContent);
-        }
     }
 }

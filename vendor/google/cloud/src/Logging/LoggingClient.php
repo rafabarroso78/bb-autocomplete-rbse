@@ -17,20 +17,16 @@
 
 namespace Google\Cloud\Logging;
 
-use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\ClientTrait;
-use Google\Cloud\Core\Iterator\ItemIterator;
-use Google\Cloud\Core\Iterator\PageIterator;
-use Google\Cloud\Core\Report\MetadataProviderInterface;
+use Google\Cloud\ClientTrait;
 use Google\Cloud\Logging\Connection\ConnectionInterface;
 use Google\Cloud\Logging\Connection\Grpc;
 use Google\Cloud\Logging\Connection\Rest;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
- * Google Stackdriver Logging allows you to store, search, analyze, monitor, and
- * alert on log data and events from Google Cloud Platform and Amazon Web
- * Services. Find more information at the
+ * Google Stackdriver Logging client. Allows you to store, search, analyze,
+ * monitor, and alert on log data and events from Google Cloud Platform and
+ * Amazon Web Services. Find more information at
  * [Google Stackdriver Logging docs](https://cloud.google.com/logging/docs/).
  *
  * This client supports transport over
@@ -47,17 +43,22 @@ use Psr\Cache\CacheItemPoolInterface;
  * Afterwards, please install the following dependencies through composer:
  *
  * ```sh
- * $ composer require google/gax && composer require google/proto-client
+ * $ composer require google/gax && composer require google/proto-client-php
  * ```
  *
  * Please take care in installing the same version of these libraries that are
  * outlined in the project's composer.json require-dev keyword.
  *
- * NOTE: Support for gRPC is currently at an Alpha quality level, meaning it is still
- * a work in progress and is more likely to get backwards-incompatible updates.
- *
  * Example:
  * ```
+ * use Google\Cloud\ServiceBuilder;
+ *
+ * $cloud = new ServiceBuilder();
+ * $logging = $cloud->logging();
+ * ```
+ *
+ * ```
+ * // LoggingClient can be instantiated directly.
  * use Google\Cloud\Logging\LoggingClient;
  *
  * $logging = new LoggingClient();
@@ -65,10 +66,7 @@ use Psr\Cache\CacheItemPoolInterface;
  */
 class LoggingClient
 {
-    use ArrayTrait;
     use ClientTrait;
-
-    const VERSION = '1.3.1';
 
     const FULL_CONTROL_SCOPE = 'https://www.googleapis.com/auth/logging.admin';
     const READ_ONLY_SCOPE = 'https://www.googleapis.com/auth/logging.read';
@@ -85,61 +83,6 @@ class LoggingClient
     private $formattedProjectName;
 
     /**
-     * @var array The config given to the constructor.
-     */
-    private $config;
-
-    /**
-     * Create a PsrLogger with batching enabled.
-     *
-     * @param string $name The name of the log to write entries to.
-     * @param array $options [optional] {
-     *     Configuration options.
-     *
-     *     @type string $messageKey The key in the `jsonPayload` used to contain
-     *           the logged message. **Defaults to** `message`.
-     *     @type array $resource The
-     *           [monitored resource](https://cloud.google.com/logging/docs/api/reference/rest/v2/MonitoredResource)
-     *           to associate log entries with. **Defaults to** type global.
-     *     @type array $labels A set of user-defined (key, value) data that
-     *           provides additional information about the log entry.
-     *     @type MetadataProviderInterface $metadataProvider **Defaults to** An
-     *           automatically chosen provider, based on detected environment
-     *           settings.
-     *     @type bool $debugOutput Whether or not to output debug information.
-     *           Please note debug output currently only applies in CLI based
-     *           applications. **Defaults to** `false`.
-     *     @type array $batchOptions A set of options for a BatchJob.
-     *           {@see \Google\Cloud\Core\Batch\BatchJob::__construct()} for
-     *           more details.
-     *           **Defaults to** ['batchSize' => 1000,
-     *                            'callPeriod' => 2.0,
-     *                            'workerNum' => 2].
-     *     @type array $clientConfig Configuration options for the Logging client
-     *           used to handle processing of batch items. For valid options
-     *           please see
-     *           {@see \Google\Cloud\Logging\LoggingClient::__construct()}.
-     *     @type BatchRunner $batchRunner A BatchRunner object. Mainly used for
-     *           the tests to inject a mock. **Defaults to** a newly created
-     *           BatchRunner.
-     * }
-     * @return PsrLogger
-     * @experimental The experimental flag means that while we believe this method
-     *      or class is ready for use, it may change before release in backwards-
-     *      incompatible ways. Please use with caution, and test thoroughly when
-     *      upgrading.
-     **/
-    public static function psrBatchLogger($name, array $options = [])
-    {
-        $client = array_key_exists('clientConfig', $options)
-            ? new self($options['clientConfig'])
-            : new self();
-        // Force enabling batch.
-        $options['batchEnabled'] = true;
-        return $client->psrLogger($name, $options);
-    }
-
-    /**
      * Create a Logging client.
      *
      * @param array $config [optional] {
@@ -154,9 +97,9 @@ class LoggingClient
      *           requests specifically for authentication.
      *     @type callable $httpHandler A handler used to deliver Psr7 requests.
      *           Only valid for requests sent over REST.
-     *     @type array $keyFile The contents of the service account credentials
-     *           .json file retrieved from the Google Developer's Console.
-     *           Ex: `json_decode(file_get_contents($path), true)`.
+     *     @type string $keyFile The contents of the service account
+     *           credentials .json file retrieved from the Google Developers
+     *           Console.
      *     @type string $keyFilePath The full path to your service account
      *           credentials .json file retrieved from the Google Developers
      *           Console.
@@ -164,12 +107,12 @@ class LoggingClient
      *           **Defaults to** `3`.
      *     @type array $scopes Scopes to be used for the request.
      *     @type string $transport The transport type used for requests. May be
-     *           either `grpc` or `rest`. **Defaults to** `rest`.
+     *           either `grpc` or `rest`. **Defaults to** `grpc` if gRPC support
+     *           is detected on the system.
      * }
      */
     public function __construct(array $config = [])
     {
-        $this->config = $config;
         $connectionType = $this->getConnectionType($config);
         if (!isset($config['scopes'])) {
             $config['scopes'] = [self::FULL_CONTROL_SCOPE];
@@ -187,7 +130,7 @@ class LoggingClient
      *
      * Example:
      * ```
-     * $sink = $logging->createSink('my-sink', 'storage.googleapis.com/my-bucket');
+     * $logging->createSink('my-sink', 'storage.googleapis.com/my-bucket');
      * ```
      *
      * @codingStandardsIgnoreStart
@@ -249,7 +192,7 @@ class LoggingClient
      * $sinks = $logging->sinks();
      *
      * foreach ($sinks as $sink) {
-     *     echo $sink->name() . PHP_EOL;
+     *     echo $sink->name();
      * }
      * ```
      *
@@ -260,32 +203,27 @@ class LoggingClient
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type int $pageSize The maximum number of results to return per
-     *           request.
-     *     @type int $resultLimit Limit the number of results returned in total.
-     *           **Defaults to** `0` (return all results).
-     *     @type string $pageToken A previously-returned page token used to
-     *           resume the loading of results from a specific point.
+     *     @type int $pageSize The maximum number of results to return per request.
      * }
-     * @return ItemIterator<Google\Cloud\Logging\Sink>
+     * @return \Generator<Google\Cloud\Logging\Sink>
      */
     public function sinks(array $options = [])
     {
-        $resultLimit = $this->pluck('resultLimit', $options, false);
+        $options['pageToken'] = null;
 
-        return new ItemIterator(
-            new PageIterator(
-                function (array $sink) {
-                    return new Sink($this->connection, $sink['name'], $this->projectId, $sink);
-                },
-                [$this->connection, 'listSinks'],
-                $options + ['parent' => $this->formattedProjectName],
-                [
-                    'itemsKey' => 'sinks',
-                    'resultLimit' => $resultLimit
-                ]
-            )
-        );
+        do {
+            $response = $this->connection->listSinks($options + ['parent' => $this->formattedProjectName]);
+
+            if (!isset($response['sinks'])) {
+                return;
+            }
+
+            foreach ($response['sinks'] as $sink) {
+                yield new Sink($this->connection, $sink['name'], $this->projectId, $sink);
+            }
+
+            $options['pageToken'] = isset($response['nextPageToken']) ? $response['nextPageToken'] : null;
+        } while ($options['pageToken']);
     }
 
     /**
@@ -293,10 +231,7 @@ class LoggingClient
      *
      * Example:
      * ```
-     * $metric = $logging->createMetric(
-     *     'my-metric',
-     *     'logName = projects/my-project/logs/my-log'
-     * );
+     * $logging->createMetric('my-metric', 'logName = projects/my-project/logs/my-log');
      * ```
      *
      * @codingStandardsIgnoreStart
@@ -350,7 +285,7 @@ class LoggingClient
      * $metrics = $logging->metrics();
      *
      * foreach ($metrics as $metric) {
-     *     echo $metric->name() . PHP_EOL;
+     *     echo $metric->name();
      * }
      * ```
      *
@@ -361,32 +296,27 @@ class LoggingClient
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type int $pageSize The maximum number of results to return per
-     *           request.
-     *     @type int $resultLimit Limit the number of results returned in total.
-     *           **Defaults to** `0` (return all results).
-     *     @type string $pageToken A previously-returned page token used to
-     *           resume the loading of results from a specific point.
+     *     @type int $pageSize The maximum number of results to return per request.
      * }
-     * @return ItemIterator<Google\Cloud\Logging\Metric>
+     * @return \Generator<Google\Cloud\Logging\Metric>
      */
     public function metrics(array $options = [])
     {
-        $resultLimit = $this->pluck('resultLimit', $options, false);
+        $options['pageToken'] = null;
 
-        return new ItemIterator(
-            new PageIterator(
-                function (array $metric) {
-                    return new Metric($this->connection, $metric['name'], $this->projectId, $metric);
-                },
-                [$this->connection, 'listMetrics'],
-                $options + ['parent' => $this->formattedProjectName],
-                [
-                    'itemsKey' => 'metrics',
-                    'resultLimit' => $resultLimit
-                ]
-            )
-        );
+        do {
+            $response = $this->connection->listMetrics($options + ['parent' => $this->formattedProjectName]);
+
+            if (!isset($response['metrics'])) {
+                return;
+            }
+
+            foreach ($response['metrics'] as $metric) {
+                yield new Metric($this->connection, $metric['name'], $this->projectId, $metric);
+            }
+
+            $options['pageToken'] = isset($response['nextPageToken']) ? $response['nextPageToken'] : null;
+        } while ($options['pageToken']);
     }
 
     /**
@@ -397,7 +327,7 @@ class LoggingClient
      * $entries = $logging->entries();
      *
      * foreach ($entries as $entry) {
-     *     echo $entry->info()['textPayload'] . PHP_EOL;
+     *     echo $entry->info()['textPayload'];
      * }
      * ```
      *
@@ -408,7 +338,7 @@ class LoggingClient
      * ]);
      *
      * foreach ($entries as $entry) {
-     *     echo $entry->info()['textPayload'] . PHP_EOL;
+     *     echo $entry->info()['textPayload'];
      * }
      * ```
      *
@@ -432,16 +362,13 @@ class LoggingClient
      *           `timestamp desc`. **Defaults to** `"timestamp asc"`.
      *     @type int $pageSize The maximum number of results to return per
      *           request.
-     *     @type int $resultLimit Limit the number of results returned in total.
-     *           **Defaults to** `0` (return all results).
-     *     @type string $pageToken A previously-returned page token used to
-     *           resume the loading of results from a specific point.
      * }
-     * @return ItemIterator<Google\Cloud\Logging\Entry>
+     * @return \Generator<Google\Cloud\Logging\Entry>
      */
     public function entries(array $options = [])
     {
-        $resultLimit = $this->pluck('resultLimit', $options, false);
+        $options['pageToken'] = null;
+
         $resourceNames = ['projects/' . $this->projectId];
         if (isset($options['projectIds'])) {
             foreach ($options['projectIds'] as $projectId) {
@@ -455,19 +382,19 @@ class LoggingClient
             $options['resourceNames'] = $resourceNames;
         }
 
-        return new ItemIterator(
-            new PageIterator(
-                function (array $entry) {
-                    return new Entry($entry);
-                },
-                [$this->connection, 'listEntries'],
-                $options,
-                [
-                    'itemsKey' => 'entries',
-                    'resultLimit' => $resultLimit
-                ]
-            )
-        );
+        do {
+            $response = $this->connection->listEntries($options);
+
+            if (!isset($response['entries'])) {
+                return;
+            }
+
+            foreach ($response['entries'] as $entry) {
+                yield new Entry($entry);
+            }
+
+            $options['pageToken'] = isset($response['nextPageToken']) ? $response['nextPageToken'] : null;
+        } while ($options['pageToken']);
     }
 
     /**
@@ -476,81 +403,26 @@ class LoggingClient
      *
      * Example:
      * ```
-     * $psrLogger = $logging->psrLogger('my-log');
-     * ```
-     *
-     * ```
-     * // Write entries with background batching.
      * $psrLogger = $logging->psrLogger('my-log', [
-     *     'batchEnabled' => true
+     *     'type' => 'gcs_bucket',
+     *     'labels' => [
+     *         'bucket_name' => 'my-bucket'
+     *     ]
      * ]);
+     * $psrLogger->alert('an alert!');
      * ```
      *
+     * @codingStandardsIgnoreStart
      * @param string $name The name of the log to write entries to.
-     * @param array $options [optional] {
-     *     Configuration options.
-     *
-     *     @type string $messageKey The key in the `jsonPayload` used to contain
-     *           the logged message. **Defaults to** `message`.
-     *     @type array $resource The
-     *           [monitored resource](https://cloud.google.com/logging/docs/api/reference/rest/v2/MonitoredResource)
-     *           to associate log entries with. **Defaults to** type global.
-     *     @type array $labels A set of user-defined (key, value) data that
-     *           provides additional information about the log entry.
-     *     @type MetadataProviderInterface $metadataProvider **Defaults to** An
-     *           automatically chosen provider, based on detected environment
-     *           settings.
-     *     @type bool $batchEnabled Determines whether or not to use background
-     *           batching. **Defaults to** `false`.
-     *     @type bool $debugOutput Whether or not to output debug information.
-     *           Please note debug output currently only applies in CLI based
-     *           applications. **Defaults to** `false`. Applies only when
-     *           `batchEnabled` is set to `true`.
-     *     @type array $batchOptions A set of options for a BatchJob.
-     *           {@see \Google\Cloud\Core\Batch\BatchJob::__construct()} for
-     *           more details.
-     *           **Defaults to** ['batchSize' => 1000,
-     *                            'callPeriod' => 2.0,
-     *                            'workerNum' => 2]. Applies only when
-     *           `batchEnabled` is set to `true`. Note that this option is
-     *           currently considered **experimental** and is subject to change.
-     *     @type array $clientConfig Configuration options for the Logging client
-     *           used to handle processing of batch items. For valid options
-     *           please see
-     *           {@see \Google\Cloud\Logging\LoggingClient::__construct()}.
-     *           **Defaults to** the options provided to the current client.
-     *           Applies only when `batchEnabled` is set to `true`.
-     *     @type BatchRunner $batchRunner A BatchRunner object. Mainly used for
-     *           the tests to inject a mock. **Defaults to** a newly created
-     *           BatchRunner. Applies only when `batchEnabled` is set to `true`.
-     * }
+     * @param array $resource The
+     *        [monitored resource](https://cloud.google.com/logging/docs/api/reference/rest/Shared.Types/MonitoredResource)
+     *        to associate log entries with.
      * @return PsrLogger
+     * @codingStandardsIgnoreEnd
      */
-    public function psrLogger($name, array $options = [])
+    public function psrLogger($name, array $resource)
     {
-        $messageKey = null;
-
-        if (isset($options['messageKey'])) {
-            $messageKey = $options['messageKey'];
-            unset($options['messageKey']);
-        }
-
-        $psrLoggerOptions = $this->pluckArray([
-            'metadataProvider',
-            'batchEnabled',
-            'debugOutput',
-            'batchOptions',
-            'clientConfig',
-            'batchRunner'
-        ], $options);
-
-        return new PsrLogger(
-            $this->logger($name, $options),
-            $messageKey,
-            $psrLoggerOptions + [
-                'clientConfig' => $this->config
-            ]
-        );
+        return new PsrLogger($this->logger($name), $resource);
     }
 
     /**
@@ -559,28 +431,20 @@ class LoggingClient
      * Example:
      * ```
      * $logger = $logging->logger('my-log');
+     * $entry = $logger->entry('my-data', [
+     *     'type' => 'gcs_bucket',
+     *     'labels' => [
+     *         'bucket_name' => 'my-bucket'
+     *     ]
+     * ]);
+     * $logger->write($entry);
      * ```
      *
      * @param string $name The name of the log to write entries to.
-     * @param array $options [optional] {
-     *     Configuration options.
-     *
-     *     @type array $resource The
-     *           [monitored resource](https://cloud.google.com/logging/docs/api/reference/rest/v2/MonitoredResource)
-     *           to associate log entries with. **Defaults to** type global.
-     *     @type array $labels A set of user-defined (key, value) data that
-     *           provides additional information about the log entry.
-     * }
      * @return Logger
      */
-    public function logger($name, array $options = [])
+    public function logger($name)
     {
-        return new Logger(
-            $this->connection,
-            $name,
-            $this->projectId,
-            isset($options['resource']) ? $options['resource'] : null,
-            isset($options['labels']) ? $options['labels'] : null
-        );
+        return new Logger($this->connection, $name, $this->projectId);
     }
 }

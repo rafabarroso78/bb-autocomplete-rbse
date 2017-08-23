@@ -21,17 +21,6 @@ use Google\Cloud\Logging\Connection\ConnectionInterface;
 
 /**
  * An individual entry in a log.
- *
- * Example:
- * ```
- * use Google\Cloud\Logging\LoggingClient;
- *
- * $logging = new LoggingClient();
- *
- * $logger = $logging->logger('my-log');
- *
- * $entry = $logger->entry('my message');
- * ```
  */
 class Entry
 {
@@ -57,7 +46,9 @@ class Entry
      * echo $info['textPayload'];
      * ```
      *
-     * @see https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry LogEntry resource documentation.
+     * @codingStandardsIgnoreStart
+     * @see https://cloud.google.com/logging/docs/api/reference/rest/Shared.Types/LogEntry LogEntry resource documentation.
+     * @codingStandardsIgnoreEnd
      *
      * @return array
      */

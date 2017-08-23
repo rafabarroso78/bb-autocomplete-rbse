@@ -17,10 +17,10 @@
 
 namespace Google\Cloud\Datastore;
 
-use Google\Cloud\Core\ValidateTrait;
 use Google\Cloud\Datastore\Connection\ConnectionInterface;
 use Google\Cloud\Datastore\Connection\Rest;
 use Google\Cloud\Datastore\Query\QueryInterface;
+use Google\Cloud\ValidateTrait;
 use InvalidArgumentException;
 
 /**
@@ -265,10 +265,6 @@ class Operation
 
         if (isset($res['keys'])) {
             foreach ($res['keys'] as $index => $key) {
-                if (!isset($keys[$index])) {
-                    continue;
-                }
-
                 $end = end($key['path']);
                 $id = $end['id'];
                 $keys[$index]->setLastElementIdentifier($id);
@@ -328,9 +324,10 @@ class Operation
 
         $result = [];
         if (isset($res['found'])) {
-            foreach ($res['found'] as $found) {
-                $result['found'][] = $this->mapEntityResult($found, $options['className']);
-            }
+            $result['found'] = $this->mapEntityResult(
+                $res['found'],
+                $options['className']
+            );
 
             if ($options['sort']) {
                 $result['found'] = $this->sortEntities($result['found'], $keys);
@@ -379,7 +376,7 @@ class Operation
      *     @type string $readConsistency See
      *           [ReadConsistency](https://cloud.google.com/datastore/reference/rest/v1/ReadOptions#ReadConsistency).
      * }
-     * @return EntityIterator<Google\Cloud\Datastore\Entity>
+     * @return \Generator<Google\Cloud\Datastore\Entity>
      */
     public function runQuery(QueryInterface $query, array $options = [])
     {
@@ -387,34 +384,36 @@ class Operation
             'className' => null,
             'namespaceId' => $this->namespaceId
         ];
-        $request = $options + $this->readOptions($options) + [
-            'projectId' => $this->projectId,
-            'partitionId' => $this->partitionId($this->projectId, $options['namespaceId']),
-            $query->queryKey() => $query->queryObject()
-        ];
-        $iteratorConfig = [
-            'itemsKey' => 'batch.entityResults',
-            'resultTokenKey' => 'query.startCursor',
-            'nextResultTokenKey' => 'batch.endCursor',
-            'setNextResultTokenCondition' => function ($res) use ($query) {
-                if (isset($res['batch']['moreResults'])) {
-                    return $query->canPaginate() && $res['batch']['moreResults'] === 'NOT_FINISHED';
+
+        $moreResults = true;
+        do {
+            $request = $options + $this->readOptions($options) + [
+                'projectId' => $this->projectId,
+                'partitionId' => $this->partitionId($this->projectId, $options['namespaceId']),
+                $query->queryKey() => $query->queryObject()
+            ];
+
+            $res = $this->connection->runQuery($request);
+
+            if (isset($res['batch']['entityResults']) && is_array($res['batch']['entityResults'])) {
+                $results = $this->mapEntityResult(
+                    $res['batch']['entityResults'],
+                    $options['className']
+                );
+
+                foreach ($results as $result) {
+                    yield $result;
                 }
 
-                return false;
+                if ($query->canPaginate() && $res['batch']['moreResults'] === 'NOT_FINISHED') {
+                    $query->start($res['batch']['endCursor']);
+                } else {
+                    $moreResults = false;
+                }
+            } else {
+                $moreResults = false;
             }
-        ];
-
-        return new EntityIterator(
-            new EntityPageIterator(
-                function (array $entityResult) use ($options) {
-                    return $this->mapEntityResult($entityResult, $options['className']);
-                },
-                [$this->connection, 'runQuery'],
-                $request,
-                $iteratorConfig
-            )
-        );
+        } while ($moreResults);
     }
 
     /**
@@ -469,9 +468,7 @@ class Operation
             }
         }
 
-        if (!empty($incompleteKeys)) {
-            $keys = $this->allocateIds($incompleteKeys);
-        }
+        $this->allocateIds($incompleteKeys);
 
         return $entities;
     }
@@ -569,7 +566,7 @@ class Operation
      *
      * @see https://cloud.google.com/datastore/reference/rest/v1/EntityResult EntityResult
      *
-     * @param array $result The EntityResult from a Lookup.
+     * @param array $entityResult The EntityResult from a Lookup.
      * @param string|array $class If a string, the name of the class to return results as.
      *        Must be a subclass of {@see Google\Cloud\Datastore\Entity}.
      *        If not set, {@see Google\Cloud\Datastore\Entity} will be used.
@@ -578,57 +575,63 @@ class Operation
      *        {@see Google\Cloud\Datastore\Entity}.
      * @return Entity[]
      */
-    private function mapEntityResult(array $result, $class)
+    private function mapEntityResult(array $entityResult, $class)
     {
-        $entity = $result['entity'];
+        $entities = [];
 
-        $properties = [];
-        $excludes = [];
-        $meanings = [];
+        foreach ($entityResult as $result) {
+            $entity = $result['entity'];
 
-        if (isset($entity['properties'])) {
-            $res = $this->entityMapper->responseToEntityProperties($entity['properties']);
+            $properties = [];
+            $excludes = [];
+            $meanings = [];
 
-            $properties = $res['properties'];
-            $excludes = $res['excludes'];
-            $meanings = $res['meanings'];
-        }
+            if (isset($entity['properties'])) {
+                $res = $this->entityMapper->responseToEntityProperties($entity['properties']);
 
-        $namespaceId = (isset($entity['key']['partitionId']['namespaceId']))
-            ? $entity['key']['partitionId']['namespaceId']
-            : null;
-
-        $key = new Key($this->projectId, [
-            'path' => $entity['key']['path'],
-            'namespaceId' => $namespaceId
-        ]);
-
-        if (is_array($class)) {
-            $lastPathElement = $key->pathEnd();
-            if (!array_key_exists($lastPathElement['kind'], $class)) {
-                throw new InvalidArgumentException(sprintf(
-                    'No class found for kind %s',
-                    $lastPathElement['kind']
-                ));
+                $properties = $res['properties'];
+                $excludes = $res['excludes'];
+                $meanings = $res['meanings'];
             }
 
-            $className = $class[$lastPathElement['kind']];
-        } else {
-            $className = $class;
+            $namespaceId = (isset($entity['key']['partitionId']['namespaceId']))
+                ? $entity['key']['partitionId']['namespaceId']
+                : null;
+
+            $key = new Key($this->projectId, [
+                'path' => $entity['key']['path'],
+                'namespaceId' => $namespaceId
+            ]);
+
+            if (is_array($class)) {
+                $lastPathElement = $key->pathEnd();
+                if (!array_key_exists($lastPathElement['kind'], $class)) {
+                    throw new InvalidArgumentException(sprintf(
+                        'No class found for kind %s',
+                        $lastPathElement['kind']
+                    ));
+                }
+
+                $className = $class[$lastPathElement['kind']];
+            } else {
+                $className = $class;
+            }
+
+            $entities[] = $this->entity($key, $properties, [
+                'cursor' => (isset($result['cursor']))
+                    ? $result['cursor']
+                    : null,
+                'baseVersion' => (isset($result['version']))
+                    ? $result['version']
+                    : null,
+                'className' => $className,
+                'populatedByService' => true,
+                'excludeFromIndexes' => $excludes,
+                'meanings' => $meanings
+            ]);
         }
 
-        return $this->entity($key, $properties, [
-            'cursor' => (isset($result['cursor']))
-                ? $result['cursor']
-                : null,
-            'baseVersion' => (isset($result['version']))
-                ? $result['version']
-                : null,
-            'className' => $className,
-            'populatedByService' => true,
-            'excludeFromIndexes' => $excludes,
-            'meanings' => $meanings
-        ]);
+        return $entities;
     }
 
     /**

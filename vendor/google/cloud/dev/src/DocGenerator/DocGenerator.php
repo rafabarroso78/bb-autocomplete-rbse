@@ -19,6 +19,8 @@ namespace Google\Cloud\Dev\DocGenerator;
 
 use Google\Cloud\Dev\DocGenerator\Parser\CodeParser;
 use Google\Cloud\Dev\DocGenerator\Parser\MarkdownParser;
+use phpDocumentor\Reflection\DocBlock\Description;
+use phpDocumentor\Reflection\DocBlock\Tag\SeeTag;
 use phpDocumentor\Reflection\FileReflector;
 
 /**
@@ -30,32 +32,16 @@ class DocGenerator
     private $files;
     private $outputPath;
     private $executionPath;
-    private $componentId;
-    private $manifestPath;
-    private $release;
-    private $isComponent;
 
     /**
      * @param array $files
      */
-    public function __construct(
-        TypeGenerator $types,
-        array $files,
-        $outputPath,
-        $executionPath,
-        $componentId,
-        $manifestPath,
-        $release,
-        $isComponent = true
-    ) {
+    public function __construct(TypeGenerator $types, array $files, $outputPath, $executionPath)
+    {
         $this->types = $types;
         $this->files = $files;
         $this->outputPath = $outputPath;
         $this->executionPath = $executionPath;
-        $this->componentId = $componentId;
-        $this->manifestPath = $manifestPath;
-        $this->release = $release;
-        $this->isComponent = $isComponent;
     }
 
     /**
@@ -63,61 +49,31 @@ class DocGenerator
      *
      * @return void
      */
-    public function generate($basePath, $pretty)
+    public function generate()
     {
-        $fileReflectorRegister = new ReflectorRegister();
         foreach ($this->files as $file) {
 
-            if ($basePath) {
-                $currentFileArr = explode($basePath, trim($file, '/'));
-                if (isset($currentFileArr[1])) {
-                    $currentFile = trim($currentFileArr[1], '/');
-                }
-            }
-
+            $currentFile = substr(str_replace($this->executionPath, '', $file), 3);
             $isPhp = strrpos($file, '.php') == strlen($file) - strlen('.php');
 
             if ($isPhp) {
-                $parser = new CodeParser(
-                    $file,
-                    $currentFile,
-                    $fileReflectorRegister,
-                    dirname($this->executionPath),
-                    $this->componentId,
-                    $this->manifestPath,
-                    $this->release,
-                    $basePath,
-                    $this->isComponent
-                );
+                $fileReflector = new FileReflector($file);
+                $parser = new CodeParser($file, $currentFile, $fileReflector);
             } else {
                 $content = file_get_contents($file);
-                $split = explode('src/', $file);
-                $parser = new MarkdownParser($split[1], $content);
+                $parser = new MarkdownParser($currentFile, $content);
             }
 
             $document = $parser->parse();
-            if ($document) {
-                $writer = new Writer($document, $this->outputPath, $pretty);
-                $writer->write($currentFile);
 
-                $this->types->addType([
-                    'id' => $document['id'],
-                    'title' => $document['title'],
-                    'contents' => ($this->isComponent)
-                        ? $this->prune($document['id'] . '.json')
-                        : $document['id'] . '.json'
-                ]);
-            }
+            $writer = new Writer(json_encode($document), $this->outputPath);
+            $writer->write(substr($currentFile, 4));
+
+            $this->types->addType([
+                'id' => $document['id'],
+                'title' => $document['title'],
+                'contents' => $document['id'] . '.json'
+            ]);
         }
-    }
-
-    private function prune($contentsFileName)
-    {
-        $explode = explode('/', $contentsFileName);
-        if (count($explode) > 1) {
-            array_shift($explode);
-        }
-
-        return implode('/', $explode);
     }
 }

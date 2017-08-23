@@ -17,12 +17,8 @@
 
 namespace Google\Cloud\Tests\System\BigQuery;
 
-use Google\Cloud\Core\ExponentialBackoff;
+use Google\Cloud\ExponentialBackoff;
 
-/**
- * @group bigquery
- * @group bigquery-table
- */
 class ManageTablesTest extends BigQueryTestCase
 {
     public function testListTables()
@@ -34,7 +30,7 @@ class ManageTablesTest extends BigQueryTestCase
         ];
 
         foreach ($tablesToCreate as $tableToCreate) {
-            self::$dataset->createTable($tableToCreate);
+            self::$deletionQueue[] = self::$dataset->createTable($tableToCreate);
         }
 
         $tables = self::$dataset->tables();
@@ -60,6 +56,7 @@ class ManageTablesTest extends BigQueryTestCase
         $this->assertFalse(self::$dataset->table($id)->exists());
 
         $table = self::$dataset->createTable($id, $options);
+        self::$deletionQueue[] = $table;
 
         $this->assertTrue(self::$dataset->table($id)->exists());
         $this->assertEquals($id, $table->id());
@@ -96,12 +93,8 @@ class ManageTablesTest extends BigQueryTestCase
         $object = self::$bucket->object(
             uniqid(self::TESTING_PREFIX)
         );
-
-        $job = self::$table->export($object, [
-            'jobConfig' => [
-                'destinationFormat' => 'NEWLINE_DELIMITED_JSON'
-            ]
-        ]);
+        self::$deletionQueue[] = $object;
+        $job = self::$table->export($object);
 
         $backoff = new ExponentialBackoff(8);
         $backoff->execute(function () use ($job) {
@@ -115,7 +108,6 @@ class ManageTablesTest extends BigQueryTestCase
         if (!$job->isComplete()) {
             $this->fail('Job failed to complete within the allotted time.');
         }
-
         $this->assertArrayNotHasKey('errorResult', $job->info()['status']);
     }
 

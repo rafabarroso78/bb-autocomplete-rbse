@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\PubSub\Connection;
+namespace Google\Cloud\Tests\PubSub\Connection;
 
 use Google\Cloud\PubSub\Connection\ConnectionInterface;
 use Google\Cloud\PubSub\Connection\IamSubscription;
@@ -26,28 +26,25 @@ use Prophecy\Argument;
  */
 class IamSubscriptionTest extends \PHPUnit_Framework_TestCase
 {
-    /**
-     * @dataProvider methodProvider
-     */
-    public function testProxies($methodName, $proxyName, $args)
+    public function testProxies()
     {
         $connection = $this->prophesize(ConnectionInterface::class);
-        $connection->$proxyName($args)
-            ->willReturn($args)
+        $connection->getSubscriptionIamPolicy(Argument::withEntry('foo', 'bar'))
+            ->willReturn('test')
             ->shouldBeCalledTimes(1);
 
-        $iam = new IamSubscription($connection->reveal());
+        $connection->setSubscriptionIamPolicy(Argument::withEntry('foo', 'bar'))
+            ->willReturn('test')
+            ->shouldBeCalledTimes(1);
 
-        $this->assertEquals($args, $iam->$methodName($args));
-    }
+        $connection->testSubscriptionIamPermissions(Argument::withEntry('foo', 'bar'))
+            ->willReturn('test')
+            ->shouldBeCalledTimes(1);
 
-    public function methodProvider()
-    {
-        $args = ['foo' => 'bar'];
-        return [
-            ['getPolicy', 'getSubscriptionIamPolicy', $args],
-            ['setPolicy', 'setSubscriptionIamPolicy', $args],
-            ['testPermissions', 'testSubscriptionIamPermissions', $args],
-        ];
+        $iamSubscription = new IamSubscription($connection->reveal());
+
+        $this->assertEquals('test', $iamSubscription->getPolicy(['foo' => 'bar']));
+        $this->assertEquals('test', $iamSubscription->setPolicy(['foo' => 'bar']));
+        $this->assertEquals('test', $iamSubscription->testPermissions(['foo' => 'bar']));
     }
 }

@@ -17,8 +17,6 @@
 
 namespace Google\Cloud\BigQuery\Connection;
 
-use Google\Cloud\Core\Upload\AbstractUploader;
-
 /**
  * Represents a connection to
  * [BigQuery](https://cloud.google.com/bigquery/).

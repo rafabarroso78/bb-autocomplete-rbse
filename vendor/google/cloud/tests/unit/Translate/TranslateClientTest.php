@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Translate;
+namespace Google\Cloud\Tests\Translate;
 
 use Google\Cloud\Translate\Connection\ConnectionInterface;
 use Google\Cloud\Translate\TranslateClient;
@@ -41,34 +41,13 @@ class TranslateClientTest extends \PHPUnit_Framework_TestCase
         $client = new TranslateTestClient();
 
         $this->connection->listTranslations(Argument::that(function($args) {
-            if (isset($args['key'])) {
-                return false;
-            }
-
+            if (!is_null($args['key'])) return false;
             return true;
         }))->shouldBeCalled()->willReturn([]);
 
         $client->setConnection($this->connection->reveal());
 
         $client->translate('foo');
-    }
-
-    public function testTranslateModel()
-    {
-        $this->connection->listTranslations(Argument::that(function ($args) {
-            if (isset($args['model'])) return false;
-        }));
-
-        $this->client->setConnection($this->connection->reveal());
-
-        $this->client->translate('foo bar');
-
-        $this->connection->listTranslations(Argument::that(function ($args) {
-            if ($args['model'] !== 'base') return false;
-        }));
-
-        $this->client->setConnection($this->connection->reveal());
-        $this->client->translate('foo bar', ['model' => 'base']);
     }
 
     public function testTranslate()
@@ -156,37 +135,6 @@ class TranslateClientTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals($expected1, $translations[0]);
         $this->assertEquals($expected2, $translations[1]);
-    }
-
-    public function testTranslateBatchWithNotZeroIndexedInput()
-    {
-       $expected1 = $this->getTranslateExpectedData('translate', 'translated', 'en');
-       $expected2 = $this->getTranslateExpectedData('translate2', 'translated2', 'en');
-       $stringsToTranslate = [1 => $expected1['input'], 2 => $expected2['input']];
-
-       $target = 'de';
-       $this->connection
-          ->listTranslations([
-             'target' => $target,
-             'q' => $stringsToTranslate,
-             'key' => $this->key,
-             'model' => 'base'
-          ])
-          ->willReturn([
-             'data' => [
-                'translations' => [
-                   $this->getTranslateApiData($expected1['text'], $expected1['source']),
-                   $this->getTranslateApiData($expected2['text'], $expected2['source'])
-                ]
-             ]
-          ])
-          ->shouldBeCalledTimes(1);
-       $client = new TranslateTestClient(['key' => $this->key, 'target' => $target]);
-       $client->setConnection($this->connection->reveal());
-       $translations = $client->translateBatch($stringsToTranslate, ['model' => 'base']);
-
-       $this->assertEquals($expected1, $translations[0]);
-       $this->assertEquals($expected2, $translations[1]);
     }
 
     public function testDetectLanguage()

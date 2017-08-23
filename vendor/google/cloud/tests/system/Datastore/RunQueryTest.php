@@ -17,10 +17,6 @@
 
 namespace Google\Cloud\Tests\System\Datastore;
 
-/**
- * @group datastore
- * @group datastore-query
- */
 class RunQueryTest extends DatastoreTestCase
 {
     private static $ancestor;
@@ -64,16 +60,10 @@ class RunQueryTest extends DatastoreTestCase
             self::$client->entity($key2, self::$data[2]),
             self::$client->entity($key3, self::$data[3])
         ]);
-
-        // on rare occasions the queries below are returning no results when
-        // triggered immediately after an insert operation. the sleep here
-        // is intended to help alleviate this issue.
-        sleep(1);
-
-        self::$localDeletionQueue->add(self::$ancestor);
-        self::$localDeletionQueue->add($key1);
-        self::$localDeletionQueue->add($key2);
-        self::$localDeletionQueue->add($key3);
+        self::$deletionQueue[] = self::$ancestor;
+        self::$deletionQueue[] = $key1;
+        self::$deletionQueue[] = $key2;
+        self::$deletionQueue[] = $key3;
     }
 
     public function testQueryWithOrder()

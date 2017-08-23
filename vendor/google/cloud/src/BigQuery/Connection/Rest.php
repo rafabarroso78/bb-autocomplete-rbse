@@ -17,15 +17,14 @@
 
 namespace Google\Cloud\BigQuery\Connection;
 
-use Google\Cloud\BigQuery\BigQueryClient;
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
-use Google\Cloud\Core\RequestBuilder;
-use Google\Cloud\Core\RequestWrapper;
-use Google\Cloud\Core\RestTrait;
-use Google\Cloud\Core\Upload\AbstractUploader;
-use Google\Cloud\Core\Upload\MultipartUploader;
-use Google\Cloud\Core\Upload\ResumableUploader;
-use Google\Cloud\Core\UriTrait;
+use Google\Cloud\RequestBuilder;
+use Google\Cloud\RequestWrapper;
+use Google\Cloud\RestTrait;
+use Google\Cloud\Upload\AbstractUploader;
+use Google\Cloud\Upload\MultipartUploader;
+use Google\Cloud\Upload\ResumableUploader;
+use Google\Cloud\UriTrait;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Psr7\Request;
 
@@ -46,14 +45,9 @@ class Rest implements ConnectionInterface
      */
     public function __construct(array $config = [])
     {
-        $config += [
-            'serviceDefinitionPath' => __DIR__ . '/ServiceDefinition/bigquery-v2.json',
-            'componentVersion' => BigQueryClient::VERSION
-        ];
-
         $this->setRequestWrapper(new RequestWrapper($config));
         $this->setRequestBuilder(new RequestBuilder(
-            $config['serviceDefinitionPath'],
+            __DIR__ . '/ServiceDefinition/bigquery-v2.json',
             self::BASE_URI
         ));
     }
@@ -254,9 +248,8 @@ class Rest implements ConnectionInterface
         unset($args['configuration']);
 
         $uploaderOptionKeys = [
-            'restOptions',
+            'httpOptions',
             'retries',
-            'requestTimeout',
             'metadata'
         ];
 

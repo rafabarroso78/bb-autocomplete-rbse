@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Speech;
 
-use Google\Cloud\Core\Exception\NotFoundException;
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\Speech\Connection\ConnectionInterface;
 
 /**
@@ -25,12 +25,6 @@ use Google\Cloud\Speech\Connection\ConnectionInterface;
  *
  * Example:
  * ```
- * use Google\Cloud\Speech\SpeechClient;
- *
- * $speech = new SpeechClient([
- *     'languageCode' => 'en-US'
- * ]);
- *
  * $operation = $speech->beginRecognizeOperation(
  *     fopen(__DIR__  . '/audio.flac', 'r')
  * );
@@ -73,7 +67,7 @@ class Operation
      * Example:
      * ```
      * if ($operation->isComplete()) {
-     *     echo "The operation is complete!";
+     *     print_r($operation->results());
      * }
      * ```
      *
@@ -94,31 +88,28 @@ class Operation
      * Example:
      * ```
      * if ($operation->isComplete()) {
-     *     $results = $operation->results();
+     *     print_r($operation->results());
      * }
      * ```
      *
      * @codingStandardsIgnoreStart
-     * @see https://cloud.google.com/speech/reference/rest/v1/speech/recognize#SpeechRecognitionResult SpeechRecognitionResult
+     * @see https://cloud.google.com/speech/reference/rest/v1beta1/speech/syncrecognize#SpeechRecognitionAlternative SpeechRecognitionAlternative
      * @codingStandardsIgnoreEnd
      *
      * @param array $options [optional] Configuration Options.
-     * @return Result[]
+     * @return array The transcribed results. Each element of the array contains
+     *         a `transcript` key which holds the transcribed text. Optionally
+     *         a `confidence` key holding the confidence estimate ranging from
+     *         0.0 to 1.0 may be present. `confidence` is typically provided
+     *         only for the top hypothesis.
      */
     public function results(array $options = [])
     {
         $info = $this->info($options);
-        $results = [];
 
-        if (!isset($info['response']['results'])) {
-            return $results;
-        }
-
-        foreach ($info['response']['results'] as $result) {
-            $results[] = new Result($result);
-        }
-
-        return $results;
+        return isset($info['response']['results'])
+            ? $info['response']['results'][0]['alternatives']
+            : [];
     }
 
     /**
@@ -126,9 +117,7 @@ class Operation
      *
      * Example:
      * ```
-     * if ($operation->exists()) {
-     *     echo "The operation exists.";
-     * }
+     * $operation->exists();
      * ```
      *
      * @param array $options [optional] Configuration Options.
@@ -156,8 +145,8 @@ class Operation
      * ```
      *
      * @codingStandardsIgnoreStart
-     * @see https://cloud.google.com/speech/reference/rest/v1/operations/get Operations get API documentation.
-     * @see https://cloud.google.com/speech/reference/rest/v1/operations#Operation Operation resource documentation.
+     * @see https://cloud.google.com/speech/reference/rest/v1beta1/operations/get Operations get API documentation.
+     * @see https://cloud.google.com/speech/reference/rest/v1beta1/operations#Operation Operation resource documentation.
      * @codingStandardsIgnoreEnd
      *
      * @param array $options [optional] Configuration Options.
@@ -183,8 +172,8 @@ class Operation
      * ```
      *
      * @codingStandardsIgnoreStart
-     * @see https://cloud.google.com/speech/reference/rest/v1/operations/get Operations get API documentation.
-     * @see https://cloud.google.com/speech/reference/rest/v1/operations#Operation Operation resource documentation.
+     * @see https://cloud.google.com/speech/reference/rest/v1beta1/operations/get Operations get API documentation.
+     * @see https://cloud.google.com/speech/reference/rest/v1beta1/operations#Operation Operation resource documentation.
      * @codingStandardsIgnoreEnd
      *
      * @param array $options [optional] Configuration Options.

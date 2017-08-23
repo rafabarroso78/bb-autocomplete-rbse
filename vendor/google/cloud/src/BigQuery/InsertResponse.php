@@ -72,10 +72,10 @@ class InsertResponse
      * $rows = $insertResponse->failedRows();
      *
      * foreach ($rows as $row) {
-     *     print_r($row['rowData']) . PHP_EOL;
+     *     print_r($row['rowData']);
      *
      *     foreach ($row['errors'] as $error) {
-     *         echo $error['reason'] . ': ' . $error['message'] . PHP_EOL;
+     *         echo $error['reason'] . ': ' . $error['message'];
      *     }
      * }
      * ```
@@ -108,7 +108,7 @@ class InsertResponse
      * Example:
      * ```
      * $info = $insertResponse->info();
-     * print_r($info['insertErrors']);
+     * echo $info['insertErrors'];
      * ```
      *
      * @see https://cloud.google.com/bigquery/docs/reference/v2/tabledata/insertAll#response

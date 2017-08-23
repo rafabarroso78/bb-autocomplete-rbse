@@ -17,11 +17,10 @@
 
 namespace Google\Cloud\Vision\Connection;
 
-use Google\Cloud\Core\RequestBuilder;
-use Google\Cloud\Core\RequestWrapper;
-use Google\Cloud\Core\RestTrait;
-use Google\Cloud\Core\UriTrait;
-use Google\Cloud\Vision\VisionClient;
+use Google\Cloud\RequestBuilder;
+use Google\Cloud\RequestWrapper;
+use Google\Cloud\RestTrait;
+use Google\Cloud\UriTrait;
 
 /**
  * Implementation of the
@@ -39,14 +38,9 @@ class Rest implements ConnectionInterface
      */
     public function __construct(array $config = [])
     {
-        $config += [
-            'serviceDefinitionPath' => __DIR__ . '/ServiceDefinition/vision-v1.json',
-            'componentVersion' => VisionClient::VERSION
-        ];
-
         $this->setRequestWrapper(new RequestWrapper($config));
         $this->setRequestBuilder(new RequestBuilder(
-            $config['serviceDefinitionPath'],
+            __DIR__ . '/ServiceDefinition/vision-v1.json',
             self::BASE_URI
         ));
     }

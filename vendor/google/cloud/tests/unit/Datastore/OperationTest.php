@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Datastore;
+namespace Google\Cloud\Tests\Datastore;
 
 use Google\Cloud\Datastore\Connection\ConnectionInterface;
 use Google\Cloud\Datastore\Entity;
-use Google\Cloud\Datastore\EntityIterator;
 use Google\Cloud\Datastore\EntityMapper;
 use Google\Cloud\Datastore\Key;
 use Google\Cloud\Datastore\Operation;
@@ -38,7 +37,7 @@ class OperationTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->connection = $this->prophesize(ConnectionInterface::class);
-        $this->mapper = new EntityMapper('foo', true, false);
+        $this->mapper = new EntityMapper('foo', true);
         $this->operation = new OperationStub($this->connection->reveal(), 'foo', '', $this->mapper);
     }
 
@@ -444,7 +443,7 @@ class OperationTest extends \PHPUnit_Framework_TestCase
 
         $res = $this->operation->runQuery($q->reveal());
 
-        $this->assertInstanceOf(EntityIterator::class, $res);
+        $this->assertInstanceOf(\Generator::class, $res);
 
         $arr = iterator_to_array($res);
         $this->assertEquals(count($arr), 2);
@@ -472,7 +471,7 @@ class OperationTest extends \PHPUnit_Framework_TestCase
 
         $res = $this->operation->runQuery($q->reveal());
 
-        $this->assertInstanceOf(EntityIterator::class, $res);
+        $this->assertInstanceOf(\Generator::class, $res);
 
         $arr = iterator_to_array($res);
         $this->assertEquals(count($arr), 3);
@@ -490,11 +489,10 @@ class OperationTest extends \PHPUnit_Framework_TestCase
         $q = $this->prophesize(QueryInterface::class);
         $q->queryKey()->shouldBeCalled()->willReturn('query');
         $q->queryObject()->shouldBeCalled()->willReturn([]);
-        $q->canPaginate()->shouldBeCalled()->willReturn(false);
 
         $res = $this->operation->runQuery($q->reveal());
 
-        $this->assertInstanceOf(EntityIterator::class, $res);
+        $this->assertInstanceOf(\Generator::class, $res);
 
         $arr = iterator_to_array($res);
         $this->assertEquals(count($arr), 0);
@@ -893,11 +891,6 @@ class OperationTest extends \PHPUnit_Framework_TestCase
 
 class OperationStub extends Operation
 {
-    // public function runQuery(QueryInterface $q, array $args = [])
-    // {
-    //     echo 'test';
-    //     exit;
-    // }
     public function setConnection($connection)
     {
         $this->connection = $connection;

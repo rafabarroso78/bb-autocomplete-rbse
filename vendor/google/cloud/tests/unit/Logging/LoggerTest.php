@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Logging;
+namespace Google\Cloud\Tests\Logging;
 
-use Google\Cloud\Core\Timestamp;
 use Google\Cloud\Logging\Logger;
 use Google\Cloud\Logging\Connection\ConnectionInterface;
 use Prophecy\Argument;
@@ -27,19 +26,23 @@ use Prophecy\Argument;
  */
 class LoggerTest extends \PHPUnit_Framework_TestCase
 {
-    private $connection;
-    private $formattedName = 'projects/myProjectId/logs/myLog';
-    private $logName = 'myLog';
-    private $projectId = 'myProjectId';
-    private $textPayload = 'aPayload';
-    private $jsonPayload = ['a' => 'payload'];
-    private $resource = ['type' => 'global'];
-    private $microtime = 315532800.000000;
-    private $formattedTimestamp = '1980-01-01T00:00:00.000000Z';
+    public $connection;
+    public $formattedName;
+    public $logName = 'myLog';
+    public $projectId = 'myProjectId';
+    public $textPayload = 'aPayload';
+    public $jsonPayload = ['a' => 'payload'];
+    public $resource = ['type' => 'global'];
 
     public function setUp()
     {
+        $this->formattedName = "projects/$this->projectId/logs/$this->logName";
         $this->connection = $this->prophesize(ConnectionInterface::class);
+    }
+
+    public function getLogger($connection)
+    {
+        return new Logger($connection->reveal(), $this->logName, $this->projectId);
     }
 
     public function testDelete()
@@ -61,6 +64,7 @@ class LoggerTest extends \PHPUnit_Framework_TestCase
             'pageSize' => 50
         ];
         $this->connection->listEntries($options + [
+            'pageToken' => null,
             'resourceNames' => ["projects/$this->projectId"],
             'filter' => "logName = $this->formattedName"
         ])
@@ -117,6 +121,7 @@ class LoggerTest extends \PHPUnit_Framework_TestCase
     {
         $filter = 'textPayload = "hello world"';
         $this->connection->listEntries([
+            'pageToken' => null,
             'resourceNames' => ["projects/$this->projectId"],
             'filter' => $filter . " AND logName = $this->formattedName"
         ])
@@ -134,59 +139,19 @@ class LoggerTest extends \PHPUnit_Framework_TestCase
     /**
      * @dataProvider entryProvider
      */
-    public function testCreatesEntry($data, array $options, array $expected)
+    public function testCreatesEntry($data, $type)
     {
         $logger = $this->getLogger($this->connection);
-        $logger->setTime($this->microtime);
-        $entry = $logger->entry($data, $options);
+        $entry = $logger->entry($data, $this->resource);
 
-        $this->assertEquals($expected, $entry->info());
+        $this->assertEquals($data, $entry->info()[$type]);
     }
 
     public function entryProvider()
     {
-        $stringTimestamp = '2017-04-21T15:46:37.724986Z';
         return [
-            [
-                $this->textPayload,
-                ['timestamp' => $stringTimestamp],
-                [
-                    'textPayload' => $this->textPayload,
-                    'timestamp' => $stringTimestamp,
-                    'logName' => $this->formattedName,
-                    'resource' => $this->resource
-                ]
-            ],
-            [
-                $this->textPayload,
-                ['timestamp' => new Timestamp(new \DateTime('1980-01-01'))],
-                [
-                    'textPayload' => $this->textPayload,
-                    'timestamp' => $this->formattedTimestamp,
-                    'logName' => $this->formattedName,
-                    'resource' => $this->resource
-                ]
-            ],
-            [
-                $this->textPayload,
-                ['timestamp' => new \DateTime('1980-01-01')],
-                [
-                    'textPayload' => $this->textPayload,
-                    'timestamp' => $this->formattedTimestamp,
-                    'logName' => $this->formattedName,
-                    'resource' => $this->resource
-                ]
-            ],
-            [
-                $this->jsonPayload,
-                [],
-                [
-                    'jsonPayload' => $this->jsonPayload,
-                    'timestamp' => $this->formattedTimestamp,
-                    'logName' => $this->formattedName,
-                    'resource' => $this->resource
-                ]
-            ]
+            [$this->textPayload, 'textPayload'],
+            [$this->jsonPayload, 'jsonPayload']
         ];
     }
 
@@ -196,7 +161,7 @@ class LoggerTest extends \PHPUnit_Framework_TestCase
     public function testCreateEntryThrowsExceptionWithInvalidData()
     {
         $logger = $this->getLogger($this->connection);
-        $entry = $logger->entry(123123);
+        $entry = $logger->entry(123123, $this->resource);
     }
 
     public function testWritesEntry()
@@ -206,94 +171,16 @@ class LoggerTest extends \PHPUnit_Framework_TestCase
                 [
                     'textPayload' => $this->textPayload,
                     'logName' => $this->formattedName,
-                    'resource' => $this->resource,
-                    'timestamp' => $this->formattedTimestamp
+                    'resource' => $this->resource
                 ]
             ]
         ])
             ->willReturn([])
             ->shouldBeCalledTimes(1);
         $logger = $this->getLogger($this->connection);
+        $entry = $logger->entry($this->textPayload, $this->resource);
 
-        $this->assertNull($logger->write($this->textPayload, ['resource' => $this->resource]));
-    }
-
-    public function testLoggerUsesDefaults()
-    {
-        $resource = ['type' => 'default'];
-        $labels = ['testing' => 'labels'];
-        $this->connection->writeEntries([
-            'entries' => [
-                [
-                    'textPayload' => $this->textPayload,
-                    'logName' => $this->formattedName,
-                    'resource' => $resource,
-                    'labels' => $labels,
-                    'timestamp' => $this->formattedTimestamp
-                ]
-            ]
-        ])
-            ->willReturn([])
-            ->shouldBeCalledTimes(1);
-        $logger = $this->getLogger($this->connection, $resource, $labels);
-
-        $this->assertNull($logger->write($this->textPayload));
-    }
-
-    public function testOverrideLoggerDefaults()
-    {
-        $newResource = ['type' => 'new'];
-        $defaultLabels = ['testing' => 'labels'];
-        $newLabels = ['new' => 'labels'];
-        $this->connection->writeEntries([
-            'entries' => [
-                [
-                    'textPayload' => $this->textPayload,
-                    'logName' => $this->formattedName,
-                    'resource' => $newResource,
-                    'labels' => $newLabels,
-                    'timestamp' => $this->formattedTimestamp
-                ]
-            ]
-        ])
-            ->willReturn([])
-            ->shouldBeCalledTimes(1);
-        $logger = $this->getLogger($this->connection, [], $defaultLabels);
-
-        $this->assertNull(
-            $logger->write($this->textPayload, [
-                'resource' => $newResource,
-                'labels' => $newLabels
-            ])
-        );
-    }
-
-    public function testOverwritesEntryOptionsAndWrites()
-    {
-        $severity = 'INFO';
-        $this->connection->writeEntries([
-            'entries' => [
-                [
-                    'textPayload' => $this->textPayload,
-                    'logName' => $this->formattedName,
-                    'resource' => $this->resource,
-                    'severity' => $severity,
-                    'timestamp' => $this->formattedTimestamp
-                ]
-            ]
-        ])
-            ->willReturn([])
-            ->shouldBeCalledTimes(1);
-        $logger = $this->getLogger($this->connection);
-        $entry = $logger->entry($this->textPayload, [
-            'resource' => $this->resource,
-            'severity' => 'DEBUG' // this should be overwritten
-        ]);
-
-        $this->assertNull($logger->write($entry, [
-            'severity' => $severity,
-            'timestamp' => $this->formattedTimestamp
-        ]));
+        $this->assertNull($logger->write($entry));
     }
 
     public function testWritesEntries()
@@ -303,46 +190,21 @@ class LoggerTest extends \PHPUnit_Framework_TestCase
                 [
                     'textPayload' => $this->textPayload,
                     'logName' => $this->formattedName,
-                    'resource' => $this->resource,
-                    'timestamp' => $this->formattedTimestamp
+                    'resource' => $this->resource
                 ],
                 [
                     'jsonPayload' => $this->jsonPayload,
                     'logName' => $this->formattedName,
-                    'resource' => $this->resource,
-                    'timestamp' => $this->formattedTimestamp
+                    'resource' => $this->resource
                 ]
             ]
         ])
             ->willReturn([])
             ->shouldBeCalledTimes(1);
         $logger = $this->getLogger($this->connection);
-        $entry1 = $logger->entry($this->textPayload, ['resource' => $this->resource]);
-        $entry2 = $logger->entry($this->jsonPayload, ['resource' => $this->resource]);
+        $entry1 = $logger->entry($this->textPayload, $this->resource);
+        $entry2 = $logger->entry($this->jsonPayload, $this->resource);
 
         $this->assertNull($logger->writeBatch([$entry1, $entry2]));
-    }
-
-    private function getLogger($connection, array $resource = null, array $labels = null)
-    {
-        $logger = new LoggerStub($connection->reveal(), $this->logName, $this->projectId, $resource, $labels);
-        $logger->setTime($this->microtime);
-
-        return $logger;
-    }
-}
-
-class LoggerStub extends Logger
-{
-    private $time;
-
-    public function setTime($time)
-    {
-        $this->time = $time;
-    }
-
-    protected function microtime()
-    {
-        return $this->time ?: microtime(true);
     }
 }

@@ -1,18 +1,16 @@
 <?php
 /*
- * Copyright 2017, Google Inc. All rights reserved.
+ * Copyright 2016 Google Inc. All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 /*
@@ -20,12 +18,6 @@
  * This file was generated from the file
  * https://github.com/google/googleapis/blob/master/google/pubsub/v1/pubsub.proto
  * and updates to that file get reflected here through a refresh process.
- *
- * EXPERIMENTAL: this client library class has not yet been declared beta. This class may change
- * more frequently than those which have been declared beta or 1.0, including changes which break
- * backwards compatibility.
- *
- * @experimental
  */
 
 namespace Google\Cloud\PubSub\V1;
@@ -37,27 +29,23 @@ use Google\GAX\GrpcConstants;
 use Google\GAX\GrpcCredentialsHelper;
 use Google\GAX\PageStreamingDescriptor;
 use Google\GAX\PathTemplate;
-use Google\Iam\V1\GetIamPolicyRequest;
-use Google\Iam\V1\IAMPolicyGrpcClient;
-use Google\Iam\V1\Policy;
-use Google\Iam\V1\SetIamPolicyRequest;
-use Google\Iam\V1\TestIamPermissionsRequest;
-use Google\Pubsub\V1\DeleteTopicRequest;
-use Google\Pubsub\V1\GetTopicRequest;
-use Google\Pubsub\V1\ListTopicSubscriptionsRequest;
-use Google\Pubsub\V1\ListTopicsRequest;
-use Google\Pubsub\V1\PublishRequest;
-use Google\Pubsub\V1\PublisherGrpcClient;
-use Google\Pubsub\V1\PubsubMessage;
-use Google\Pubsub\V1\Topic;
+use google\iam\v1\GetIamPolicyRequest;
+use google\iam\v1\IAMPolicyClient as IAMPolicyGrpcClient;
+use google\iam\v1\Policy;
+use google\iam\v1\SetIamPolicyRequest;
+use google\iam\v1\TestIamPermissionsRequest;
+use google\pubsub\v1\DeleteTopicRequest;
+use google\pubsub\v1\GetTopicRequest;
+use google\pubsub\v1\ListTopicSubscriptionsRequest;
+use google\pubsub\v1\ListTopicsRequest;
+use google\pubsub\v1\PublishRequest;
+use google\pubsub\v1\PublisherClient as PublisherGrpcClient;
+use google\pubsub\v1\PubsubMessage;
+use google\pubsub\v1\Topic;
 
 /**
  * Service Description: The service that an application uses to manipulate topics, and to send
  * messages to a topic.
- *
- * EXPERIMENTAL: this client library class has not yet been declared beta. This class may change
- * more frequently than those which have been declared beta or 1.0, including changes which break
- * backwards compatibility.
  *
  * This class provides the ability to make remote calls to the backing service through method
  * calls that map to API methods. Sample code to get started:
@@ -68,7 +56,9 @@ use Google\Pubsub\V1\Topic;
  *     $formattedName = PublisherClient::formatTopicName("[PROJECT]", "[TOPIC]");
  *     $response = $publisherClient->createTopic($formattedName);
  * } finally {
- *     $publisherClient->close();
+ *     if (isset($publisherClient)) {
+ *         $publisherClient->close();
+ *     }
  * }
  * ```
  *
@@ -76,8 +66,6 @@ use Google\Pubsub\V1\Topic;
  * with these names, this class includes a format method for each type of name, and additionally
  * a parse method to extract the individual identifiers contained within names that are
  * returned.
- *
- * @experimental
  */
 class PublisherClient
 {
@@ -96,15 +84,9 @@ class PublisherClient
      */
     const DEFAULT_TIMEOUT_MILLIS = 30000;
 
-    /**
-     * The name of the code generator, to be included in the agent header.
-     */
-    const CODEGEN_NAME = 'gapic';
-
-    /**
-     * The code generator version, to be included in the agent header.
-     */
-    const CODEGEN_VERSION = '0.0.5';
+    const _GAX_VERSION = '0.1.0';
+    const _CODEGEN_NAME = 'GAPIC';
+    const _CODEGEN_VERSION = '0.0.0';
 
     private static $projectNameTemplate;
     private static $topicNameTemplate;
@@ -119,11 +101,6 @@ class PublisherClient
     /**
      * Formats a string containing the fully-qualified path to represent
      * a project resource.
-     *
-     * @param string $project
-     *
-     * @return string The formatted project resource.
-     * @experimental
      */
     public static function formatProjectName($project)
     {
@@ -135,12 +112,6 @@ class PublisherClient
     /**
      * Formats a string containing the fully-qualified path to represent
      * a topic resource.
-     *
-     * @param string $project
-     * @param string $topic
-     *
-     * @return string The formatted topic resource.
-     * @experimental
      */
     public static function formatTopicName($project, $topic)
     {
@@ -153,11 +124,6 @@ class PublisherClient
     /**
      * Parses the project from the given fully-qualified path which
      * represents a project resource.
-     *
-     * @param string $projectName The fully-qualified project resource.
-     *
-     * @return string The extracted project value.
-     * @experimental
      */
     public static function parseProjectFromProjectName($projectName)
     {
@@ -167,11 +133,6 @@ class PublisherClient
     /**
      * Parses the project from the given fully-qualified path which
      * represents a topic resource.
-     *
-     * @param string $topicName The fully-qualified topic resource.
-     *
-     * @return string The extracted project value.
-     * @experimental
      */
     public static function parseProjectFromTopicName($topicName)
     {
@@ -181,11 +142,6 @@ class PublisherClient
     /**
      * Parses the topic from the given fully-qualified path which
      * represents a topic resource.
-     *
-     * @param string $topicName The fully-qualified topic resource.
-     *
-     * @return string The extracted topic value.
-     * @experimental
      */
     public static function parseTopicFromTopicName($topicName)
     {
@@ -214,21 +170,17 @@ class PublisherClient
     {
         $listTopicsPageStreamingDescriptor =
                 new PageStreamingDescriptor([
-                    'requestPageTokenGetMethod' => 'getPageToken',
-                    'requestPageTokenSetMethod' => 'setPageToken',
-                    'requestPageSizeGetMethod' => 'getPageSize',
-                    'requestPageSizeSetMethod' => 'setPageSize',
-                    'responsePageTokenGetMethod' => 'getNextPageToken',
-                    'resourcesGetMethod' => 'getTopics',
+                    'requestPageTokenField' => 'page_token',
+                    'requestPageSizeField' => 'page_size',
+                    'responsePageTokenField' => 'next_page_token',
+                    'resourceField' => 'topics',
                 ]);
         $listTopicSubscriptionsPageStreamingDescriptor =
                 new PageStreamingDescriptor([
-                    'requestPageTokenGetMethod' => 'getPageToken',
-                    'requestPageTokenSetMethod' => 'setPageToken',
-                    'requestPageSizeGetMethod' => 'getPageSize',
-                    'requestPageSizeSetMethod' => 'setPageSize',
-                    'responsePageTokenGetMethod' => 'getNextPageToken',
-                    'resourcesGetMethod' => 'getSubscriptions',
+                    'requestPageTokenField' => 'page_token',
+                    'requestPageSizeField' => 'page_size',
+                    'responsePageTokenField' => 'next_page_token',
+                    'resourceField' => 'subscriptions',
                 ]);
 
         $pageStreamingDescriptors = [
@@ -237,17 +189,6 @@ class PublisherClient
         ];
 
         return $pageStreamingDescriptors;
-    }
-
-    private static function getGapicVersion()
-    {
-        if (file_exists(__DIR__.'/../VERSION')) {
-            return trim(file_get_contents(__DIR__.'/../VERSION'));
-        } elseif (class_exists('\Google\Cloud\ServiceBuilder')) {
-            return \Google\Cloud\ServiceBuilder::VERSION;
-        } else {
-            return;
-        }
     }
 
     // TODO(garrettjones): add channel (when supported in gRPC)
@@ -260,10 +201,10 @@ class PublisherClient
      *     @type string $serviceAddress The domain name of the API remote host.
      *                                  Default 'pubsub.googleapis.com'.
      *     @type mixed $port The port on which to connect to the remote host. Default 443.
-     *     @type \Grpc\ChannelCredentials $sslCreds
+     *     @type Grpc\ChannelCredentials $sslCreds
      *           A `ChannelCredentials` for use with an SSL-enabled channel.
      *           Default: a credentials object returned from
-     *           \Grpc\ChannelCredentials::createSsl()
+     *           Grpc\ChannelCredentials::createSsl()
      *     @type array $scopes A string array of scopes to use when acquiring credentials.
      *                         Default the scopes for the Google Cloud Pub/Sub API.
      *     @type array $retryingOverride
@@ -275,34 +216,38 @@ class PublisherClient
      *                              that don't use retries. For calls that use retries,
      *                              set the timeout in RetryOptions.
      *                              Default: 30000 (30 seconds)
-     *     @type \Google\Auth\CredentialsLoader $credentialsLoader
+     *     @type string $appName The codename of the calling service. Default 'gax'.
+     *     @type string $appVersion The version of the calling service.
+     *                              Default: the current version of GAX.
+     *     @type Google\Auth\CredentialsLoader $credentialsLoader
      *                              A CredentialsLoader object created using the
      *                              Google\Auth library.
      * }
-     * @experimental
      */
     public function __construct($options = [])
     {
+        $defaultScopes = [
+            'https://www.googleapis.com/auth/cloud-platform',
+            'https://www.googleapis.com/auth/pubsub',
+        ];
         $defaultOptions = [
             'serviceAddress' => self::SERVICE_ADDRESS,
             'port' => self::DEFAULT_SERVICE_PORT,
-            'scopes' => [
-                'https://www.googleapis.com/auth/cloud-platform',
-                'https://www.googleapis.com/auth/pubsub',
-            ],
+            'scopes' => $defaultScopes,
             'retryingOverride' => null,
             'timeoutMillis' => self::DEFAULT_TIMEOUT_MILLIS,
-            'libName' => null,
-            'libVersion' => null,
+            'appName' => 'gax',
+            'appVersion' => self::_GAX_VERSION,
         ];
         $options = array_merge($defaultOptions, $options);
 
-        $gapicVersion = $options['libVersion'] ?: self::getGapicVersion();
-
         $headerDescriptor = new AgentHeaderDescriptor([
-            'libName' => $options['libName'],
-            'libVersion' => $options['libVersion'],
-            'gapicVersion' => $gapicVersion,
+            'clientName' => $options['appName'],
+            'clientVersion' => $options['appVersion'],
+            'codeGenName' => self::_CODEGEN_NAME,
+            'codeGenVersion' => self::_CODEGEN_VERSION,
+            'gaxVersion' => self::_GAX_VERSION,
+            'phpVersion' => phpversion(),
         ]);
 
         $defaultDescriptors = ['headerDescriptor' => $headerDescriptor];
@@ -345,9 +290,6 @@ class PublisherClient
         $createIamPolicyStubFunction = function ($hostname, $opts) {
             return new IAMPolicyGrpcClient($hostname, $opts);
         };
-        if (array_key_exists('createIamPolicyStubFunction', $options)) {
-            $createIamPolicyStubFunction = $options['createIamPolicyStubFunction'];
-        }
         $this->iamPolicyStub = $this->grpcCredentialsHelper->createStub(
             $createIamPolicyStubFunction,
             $options['serviceAddress'],
@@ -357,9 +299,6 @@ class PublisherClient
         $createPublisherStubFunction = function ($hostname, $opts) {
             return new PublisherGrpcClient($hostname, $opts);
         };
-        if (array_key_exists('createPublisherStubFunction', $options)) {
-            $createPublisherStubFunction = $options['createPublisherStubFunction'];
-        }
         $this->publisherStub = $this->grpcCredentialsHelper->createStub(
             $createPublisherStubFunction,
             $options['serviceAddress'],
@@ -378,7 +317,9 @@ class PublisherClient
      *     $formattedName = PublisherClient::formatTopicName("[PROJECT]", "[TOPIC]");
      *     $response = $publisherClient->createTopic($formattedName);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
@@ -399,10 +340,9 @@ class PublisherClient
      *          is not set.
      * }
      *
-     * @return \Google\Pubsub\V1\Topic
+     * @return \google\pubsub\v1\Topic
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function createTopic($name, $optionalArgs = [])
     {
@@ -441,12 +381,13 @@ class PublisherClient
      *     $messages = [$messagesElement];
      *     $response = $publisherClient->publish($formattedTopic, $messages);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
      * @param string          $topic        The messages in the request will be published on this topic.
-     *                                      Format is `projects/{project}/topics/{topic}`.
      * @param PubsubMessage[] $messages     The messages to publish.
      * @param array           $optionalArgs {
      *                                      Optional.
@@ -459,16 +400,17 @@ class PublisherClient
      *          is not set.
      * }
      *
-     * @return \Google\Pubsub\V1\PublishResponse
+     * @return \google\pubsub\v1\PublishResponse
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function publish($topic, $messages, $optionalArgs = [])
     {
         $request = new PublishRequest();
         $request->setTopic($topic);
-        $request->setMessages($messages);
+        foreach ($messages as $elem) {
+            $request->addMessages($elem);
+        }
 
         $mergedSettings = $this->defaultCallSettings['publish']->merge(
             new CallSettings($optionalArgs)
@@ -496,12 +438,13 @@ class PublisherClient
      *     $formattedTopic = PublisherClient::formatTopicName("[PROJECT]", "[TOPIC]");
      *     $response = $publisherClient->getTopic($formattedTopic);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
      * @param string $topic        The name of the topic to get.
-     *                             Format is `projects/{project}/topics/{topic}`.
      * @param array  $optionalArgs {
      *                             Optional.
      *
@@ -513,10 +456,9 @@ class PublisherClient
      *          is not set.
      * }
      *
-     * @return \Google\Pubsub\V1\Topic
+     * @return \google\pubsub\v1\Topic
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function getTopic($topic, $optionalArgs = [])
     {
@@ -547,26 +489,17 @@ class PublisherClient
      * try {
      *     $publisherClient = new PublisherClient();
      *     $formattedProject = PublisherClient::formatProjectName("[PROJECT]");
-     *     // Iterate through all elements
-     *     $pagedResponse = $publisherClient->listTopics($formattedProject);
-     *     foreach ($pagedResponse->iterateAllElements() as $element) {
-     *         // doSomethingWith($element);
-     *     }
-     *
-     *     // OR iterate over pages of elements, with the maximum page size set to 5
-     *     $pagedResponse = $publisherClient->listTopics($formattedProject, ['pageSize' => 5]);
-     *     foreach ($pagedResponse->iteratePages() as $page) {
-     *         foreach ($page as $element) {
-     *             // doSomethingWith($element);
-     *         }
+     *     foreach ($publisherClient->listTopics($formattedProject) as $element) {
+     *         // doThingsWith(element);
      *     }
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
      * @param string $project      The name of the cloud project that topics belong to.
-     *                             Format is `projects/{project}`.
      * @param array  $optionalArgs {
      *                             Optional.
      *
@@ -590,7 +523,6 @@ class PublisherClient
      * @return \Google\GAX\PagedListResponse
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function listTopics($project, $optionalArgs = [])
     {
@@ -627,26 +559,17 @@ class PublisherClient
      * try {
      *     $publisherClient = new PublisherClient();
      *     $formattedTopic = PublisherClient::formatTopicName("[PROJECT]", "[TOPIC]");
-     *     // Iterate through all elements
-     *     $pagedResponse = $publisherClient->listTopicSubscriptions($formattedTopic);
-     *     foreach ($pagedResponse->iterateAllElements() as $element) {
-     *         // doSomethingWith($element);
-     *     }
-     *
-     *     // OR iterate over pages of elements, with the maximum page size set to 5
-     *     $pagedResponse = $publisherClient->listTopicSubscriptions($formattedTopic, ['pageSize' => 5]);
-     *     foreach ($pagedResponse->iteratePages() as $page) {
-     *         foreach ($page as $element) {
-     *             // doSomethingWith($element);
-     *         }
+     *     foreach ($publisherClient->listTopicSubscriptions($formattedTopic) as $element) {
+     *         // doThingsWith(element);
      *     }
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
      * @param string $topic        The name of the topic that subscriptions are attached to.
-     *                             Format is `projects/{project}/topics/{topic}`.
      * @param array  $optionalArgs {
      *                             Optional.
      *
@@ -670,7 +593,6 @@ class PublisherClient
      * @return \Google\GAX\PagedListResponse
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function listTopicSubscriptions($topic, $optionalArgs = [])
     {
@@ -713,12 +635,13 @@ class PublisherClient
      *     $formattedTopic = PublisherClient::formatTopicName("[PROJECT]", "[TOPIC]");
      *     $publisherClient->deleteTopic($formattedTopic);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
      * @param string $topic        Name of the topic to delete.
-     *                             Format is `projects/{project}/topics/{topic}`.
      * @param array  $optionalArgs {
      *                             Optional.
      *
@@ -731,7 +654,6 @@ class PublisherClient
      * }
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function deleteTopic($topic, $optionalArgs = [])
     {
@@ -766,7 +688,9 @@ class PublisherClient
      *     $policy = new Policy();
      *     $response = $publisherClient->setIamPolicy($formattedResource, $policy);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
@@ -788,10 +712,9 @@ class PublisherClient
      *          is not set.
      * }
      *
-     * @return \Google\Iam\V1\Policy
+     * @return \google\iam\v1\Policy
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function setIamPolicy($resource, $policy, $optionalArgs = [])
     {
@@ -827,7 +750,9 @@ class PublisherClient
      *     $formattedResource = PublisherClient::formatTopicName("[PROJECT]", "[TOPIC]");
      *     $response = $publisherClient->getIamPolicy($formattedResource);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
@@ -845,10 +770,9 @@ class PublisherClient
      *          is not set.
      * }
      *
-     * @return \Google\Iam\V1\Policy
+     * @return \google\iam\v1\Policy
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function getIamPolicy($resource, $optionalArgs = [])
     {
@@ -873,8 +797,6 @@ class PublisherClient
 
     /**
      * Returns permissions that a caller has on the specified resource.
-     * If the resource does not exist, this will return an empty set of
-     * permissions, not a NOT_FOUND error.
      *
      * Sample code:
      * ```
@@ -884,7 +806,9 @@ class PublisherClient
      *     $permissions = [];
      *     $response = $publisherClient->testIamPermissions($formattedResource, $permissions);
      * } finally {
-     *     $publisherClient->close();
+     *     if (isset($publisherClient)) {
+     *         $publisherClient->close();
+     *     }
      * }
      * ```
      *
@@ -892,7 +816,7 @@ class PublisherClient
      *                               `resource` is usually specified as a path. For example, a Project
      *                               resource is specified as `projects/{project}`.
      * @param string[] $permissions  The set of permissions to check for the `resource`. Permissions with
-     *                               wildcards (such as '*' or 'storage.*') are not allowed. For more
+     *                               wildcards (such as '{@*}' or 'storage.{@*}') are not allowed. For more
      *                               information see
      *                               [IAM Overview](https://cloud.google.com/iam/docs/overview#permissions).
      * @param array    $optionalArgs {
@@ -906,16 +830,17 @@ class PublisherClient
      *          is not set.
      * }
      *
-     * @return \Google\Iam\V1\TestIamPermissionsResponse
+     * @return \google\iam\v1\TestIamPermissionsResponse
      *
      * @throws \Google\GAX\ApiException if the remote call fails
-     * @experimental
      */
     public function testIamPermissions($resource, $permissions, $optionalArgs = [])
     {
         $request = new TestIamPermissionsRequest();
         $request->setResource($resource);
-        $request->setPermissions($permissions);
+        foreach ($permissions as $elem) {
+            $request->addPermissions($elem);
+        }
 
         $mergedSettings = $this->defaultCallSettings['testIamPermissions']->merge(
             new CallSettings($optionalArgs)
@@ -936,8 +861,6 @@ class PublisherClient
     /**
      * Initiates an orderly shutdown in which preexisting calls continue but new
      * calls are immediately cancelled.
-     *
-     * @experimental
      */
     public function close()
     {

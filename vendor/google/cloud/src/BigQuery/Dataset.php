@@ -17,11 +17,8 @@
 
 namespace Google\Cloud\BigQuery;
 
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
-use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\Exception\NotFoundException;
-use Google\Cloud\Core\Iterator\ItemIterator;
-use Google\Cloud\Core\Iterator\PageIterator;
 
 /**
  * [Datasets](https://cloud.google.com/bigquery/what-is-bigquery#datasets) allow
@@ -29,10 +26,8 @@ use Google\Cloud\Core\Iterator\PageIterator;
  */
 class Dataset
 {
-    use ArrayTrait;
-
     /**
-     * @var ConnectionInterface Represents a connection to BigQuery.
+     * @var ConnectionInterface $connection Represents a connection to BigQuery.
      */
     private $connection;
 
@@ -47,27 +42,16 @@ class Dataset
     private $info;
 
     /**
-     * @var ValueMapper Maps values between PHP and BigQuery.
-     */
-    private $mapper;
-
-    /**
      * @param ConnectionInterface $connection Represents a connection to
      *        BigQuery.
      * @param string $id The dataset's ID.
      * @param string $projectId The project's ID.
      * @param array $info [optional] The dataset's metadata.
      */
-    public function __construct(
-        ConnectionInterface $connection,
-        $id,
-        $projectId,
-        ValueMapper $mapper,
-        array $info = []
-    ) {
+    public function __construct(ConnectionInterface $connection, $id, $projectId, array $info = [])
+    {
         $this->connection = $connection;
         $this->info = $info;
-        $this->mapper = $mapper;
         $this->identity = [
             'datasetId' => $id,
             'projectId' => $projectId
@@ -79,7 +63,7 @@ class Dataset
      *
      * Example:
      * ```
-     * echo $dataset->exists();
+     * $dataset->exists();
      * ```
      *
      * @return bool
@@ -149,21 +133,15 @@ class Dataset
      *
      * Example:
      * ```
-     * $table = $dataset->table('myTableId');
+     * $table = $bigQuery->table('myTableId');
      * ```
      *
      * @param string $id The id of the table to request.
-     * @return Table
+     * @return Dataset
      */
     public function table($id)
     {
-        return new Table(
-            $this->connection,
-            $id,
-            $this->identity['datasetId'],
-            $this->identity['projectId'],
-            $this->mapper
-        );
+        return new Table($this->connection, $id, $this->identity['datasetId'], $this->identity['projectId']);
     }
 
     /**
@@ -174,7 +152,7 @@ class Dataset
      * $tables = $dataset->tables();
      *
      * foreach ($tables as $table) {
-     *     echo $table->id() . PHP_EOL;
+     *     var_dump($table->id());
      * }
      * ```
      *
@@ -183,38 +161,33 @@ class Dataset
      * @param array $options [optional] {
      *     Configuration options.
      *
-     *     @type int $maxResults Maximum number of results to return per page.
-     *     @type int $resultLimit Limit the number of results returned in total.
-     *           **Defaults to** `0` (return all results).
-     *     @type string $pageToken A previously-returned page token used to
-     *           resume the loading of results from a specific point.
+     *     @type int $maxResults Maximum number of results to return.
      * }
-     * @return ItemIterator<Google\Cloud\BigQuery\Table>
+     * @return \Generator<Google\Cloud\BigQuery\Table>
      */
     public function tables(array $options = [])
     {
-        $resultLimit = $this->pluck('resultLimit', $options, false);
+        $options['pageToken'] = null;
 
-        return new ItemIterator(
-            new PageIterator(
-                function (array $table) {
-                    return new Table(
-                        $this->connection,
-                        $table['tableReference']['tableId'],
-                        $this->identity['datasetId'],
-                        $this->identity['projectId'],
-                        $this->mapper,
-                        $table
-                    );
-                },
-                [$this->connection, 'listTables'],
-                $options + $this->identity,
-                [
-                    'itemsKey' => 'tables',
-                    'resultLimit' => $resultLimit
-                ]
-            )
-        );
+        do {
+            $response = $this->connection->listTables($options + $this->identity);
+
+            if (!isset($response['tables'])) {
+                return;
+            }
+
+            foreach ($response['tables'] as $table) {
+                yield new Table(
+                    $this->connection,
+                    $table['tableReference']['tableId'],
+                    $this->identity['datasetId'],
+                    $this->identity['projectId'],
+                    $table
+                );
+            }
+
+            $options['pageToken'] = isset($response['nextPageToken']) ? $response['nextPageToken'] : null;
+        } while ($options['pageToken']);
     }
 
     /**
@@ -254,7 +227,6 @@ class Dataset
             $id,
             $this->identity['datasetId'],
             $this->identity['projectId'],
-            $this->mapper,
             $response
         );
     }
@@ -321,7 +293,7 @@ class Dataset
     /**
      * Retrieves the dataset's identity.
      *
-     * An identity provides a description of a resource that is nested in nature.
+     * An identity provides a description of resource that is nested in nature.
      *
      * Example:
      * ```

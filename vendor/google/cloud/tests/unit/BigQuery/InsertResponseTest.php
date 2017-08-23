@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\BigQuery;
+namespace Google\Cloud\Tests\BigQuery;
 
 use Google\Cloud\BigQuery\InsertResponse;
 use Prophecy\Argument;

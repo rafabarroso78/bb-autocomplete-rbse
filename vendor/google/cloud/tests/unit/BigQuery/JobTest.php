@@ -15,13 +15,12 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\BigQuery;
+namespace Google\Cloud\Tests\BigQuery;
 
 use Google\Cloud\BigQuery\Connection\ConnectionInterface;
 use Google\Cloud\BigQuery\Job;
 use Google\Cloud\BigQuery\QueryResults;
-use Google\Cloud\BigQuery\ValueMapper;
-use Google\Cloud\Core\Exception\NotFoundException;
+use Google\Cloud\Exception\NotFoundException;
 use Prophecy\Argument;
 
 /**
@@ -41,8 +40,7 @@ class JobTest extends \PHPUnit_Framework_TestCase
 
     public function getJob($connection, array $data = [])
     {
-        $mapper = $this->prophesize(ValueMapper::class);
-        return new Job($connection->reveal(), $this->jobId, $this->projectId, $mapper->reveal(), $data);
+        return new Job($connection->reveal(), $this->jobId, $this->projectId, $data);
     }
 
     public function testDoesExistTrue()

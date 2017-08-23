@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Logging;
 
-use Google\Cloud\Core\Exception\NotFoundException;
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\Logging\Connection\ConnectionInterface;
 
 /**
@@ -27,9 +27,10 @@ use Google\Cloud\Logging\Connection\ConnectionInterface;
  *
  * Example:
  * ```
- * use Google\Cloud\Logging\LoggingClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $logging = new LoggingClient();
+ * $cloud = new ServiceBuilder();
+ * $logging = $cloud->logging();
  *
  * $metric = $logging->metric('my-metric');
  * ```
@@ -39,7 +40,7 @@ class Metric
     /**
      * @var ConnectionInterface Represents a connection to Stackdriver Logging.
      */
-    protected $connection;
+    private $connection;
 
     /**
      * @var string The metric's formatted name used in API requests.
@@ -71,9 +72,7 @@ class Metric
      *
      * Example:
      * ```
-     * if ($metric->exists()) {
-     *     echo 'Metric exists!';
-     * }
+     * $metric->exists();
      * ```
      *
      * @param array $options [optional] Configuration Options

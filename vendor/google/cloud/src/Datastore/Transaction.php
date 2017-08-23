@@ -46,9 +46,11 @@ use Google\Cloud\Datastore\Query\QueryInterface;
  *
  * Example:
  * ```
- * use Google\Cloud\Datastore\DatastoreClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $datastore = new DatastoreClient();
+ * $cloud = new ServiceBuilder();
+ *
+ * $datastore = $cloud->datastore();
  *
  * $transaction = $datastore->transaction();
  * ```
@@ -272,8 +274,8 @@ class Transaction
      * ];
      *
      * $entities = [
-     *     $datastore->entity($keys[0], ['firstName' => 'Bob']),
-     *     $datastore->entity($keys[1], ['firstName' => 'John'])
+     *     $datastore->entity($key[0], ['firstName' => 'Bob']),
+     *     $datastore->entity($key[1], ['firstName' => 'John'])
      * ];
      *
      * $transaction->upsertBatch($entities);
@@ -385,10 +387,10 @@ class Transaction
      *     $datastore->key('Person', 'John')
      * ];
      *
-     * $entities = $transaction->lookupBatch($keys);
+     * $entities = $transaction->lookup($keys);
      *
      * foreach ($entities['found'] as $entity) {
-     *     echo $entity['firstName'] . PHP_EOL;
+     *     echo $entity['firstName'];
      * }
      * ```
      *
@@ -437,7 +439,7 @@ class Transaction
      *           Must be a subclass of {@see Google\Cloud\Datastore\Entity}.
      *           If not set, {@see Google\Cloud\Datastore\Entity} will be used.
      * }
-     * @return EntityIterator<Google\Cloud\Datastore\Entity>
+     * @return \Generator<Google\Cloud\Datastore\Entity>
      */
     public function runQuery(QueryInterface $query, array $options = [])
     {
@@ -454,10 +456,8 @@ class Transaction
      *
      * Example:
      * ```
-     * $transaction->commit();
+     * $transaction->commit()
      * ```
-     *
-     * @see https://cloud.google.com/datastore/docs/reference/rest/v1/projects/commit Commit API documentation
      *
      * @param array $options [optional] Configuration Options.
      * @return array [Response Body](https://cloud.google.com/datastore/reference/rest/v1/projects/commit#response-body)

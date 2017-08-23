@@ -32,7 +32,7 @@ abstract class AbstractFeature implements FeatureInterface
      *
      * Example:
      * ```
-     * $info = $imageProperties->info();
+     * $annotation->faces()[0]->info();
      * ```
      *
      * @return array

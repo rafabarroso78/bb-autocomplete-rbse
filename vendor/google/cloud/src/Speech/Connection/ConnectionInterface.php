@@ -27,13 +27,13 @@ interface ConnectionInterface
      * @param array $args
      * @return array
      */
-    public function recognize(array $args = []);
+    public function syncRecognize(array $args = []);
 
     /**
      * @param array $args
      * @return array
      */
-    public function longRunningRecognize(array $args = []);
+    public function asyncRecognize(array $args = []);
 
     /**
      * @param array $args

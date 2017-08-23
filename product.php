@@ -1,15 +1,18 @@
 <?php
-	namespace Google\Cloud\BigQuery;
-	use Google\Cloud\BigQuery\BigQueryClient;
+	require __DIR__ . '/vendor/autoload.php'; 
 
+	use Google\Cloud\BigQuery\BigQueryClient;
 	include 'data.php';
 
 	$term = trim($_GET['id']);
-	# [START build_service]
+	//[START build_service]
 	$bigQuery = new BigQueryClient([
     	'projectId' => 'rbse-webserv',
 	]);
 
+	$query = 'SELECT * FROM [rbse-webserv:bp.products] WHERE sku = 643628 LIMIT 1;';
+	$options = ['useLegacySql' => true];
+	$queryResults = $bigQuery->runQuery($query, $options);
 
 	foreach($jsonArray as $item)
 	{

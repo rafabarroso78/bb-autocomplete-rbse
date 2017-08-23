@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Vision\Annotation;
 
-use Google\Cloud\Core\CallTrait;
+use Google\Cloud\CallTrait;
 
 /**
  * Represents an entity annotation. Entities are created by several
@@ -26,12 +26,12 @@ use Google\Cloud\Core\CallTrait;
  *
  * Example:
  * ```
- * use Google\Cloud\Vision\VisionClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $vision = new VisionClient();
+ * $cloud = new ServiceBuilder();
+ * $vision = $cloud->vision();
  *
- * $imageResource = fopen(__DIR__ . '/assets/family-photo.jpg', 'r');
- * $image = $vision->image($imageResource, [ 'text' ]);
+ * $image = $vision->image(fopen(__DIR__ .'/assets/family-photo.jpg', 'r'), [ 'text' ]);
  * $annotation = $vision->annotate($image);
  *
  * $text = $annotation->text()[0];
@@ -167,10 +167,6 @@ use Google\Cloud\Core\CallTrait;
  *
  *     @return array
  * }
- *
- * @codingStandardsIgnoreStart
- * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#entityannotation EntityAnnotation
- * @codingStandardsIgnoreEnd
  */
 class Entity extends AbstractFeature
 {
@@ -188,6 +184,8 @@ class Entity extends AbstractFeature
      * {@see Google\Cloud\Vision\Annotation::logos()},
      * {@see Google\Cloud\Vision\Annotation::labels()} and
      * {@see Google\Cloud\Vision\Annotation::text()}.
+     *
+     * @see https://cloud.google.com/vision/reference/rest/v1/images/annotate#entityannotation EntityAnnotation
      *
      * @param array $info The entity annotation result
      */

@@ -18,16 +18,17 @@
 namespace Google\Cloud\Tests\System\BigQuery;
 
 use Google\Cloud\BigQuery\BigQueryClient;
+use Google\Cloud\ExponentialBackoff;
 use Google\Cloud\Storage\StorageClient;
-use Google\Cloud\Tests\System\SystemTestCase;
 
-class BigQueryTestCase extends SystemTestCase
+class BigQueryTestCase extends \PHPUnit_Framework_TestCase
 {
     const TESTING_PREFIX = 'gcloud_testing_';
 
     protected static $bucket;
     protected static $client;
     protected static $dataset;
+    protected static $deletionQueue = [];
     protected static $table;
     private static $hasSetUp = false;
 
@@ -38,25 +39,48 @@ class BigQueryTestCase extends SystemTestCase
         }
 
         $keyFilePath = getenv('GOOGLE_CLOUD_PHP_TESTS_KEY_PATH');
-        $schema = json_decode(file_get_contents(__DIR__ . '/../data/table-schema.json'), true);
-
-        $storage = new StorageClient([
+        $schema = [
+            'fields' => [
+                [
+                    'name' => 'city',
+                    'type' => 'STRING'
+                ],
+                [
+                    'name' => 'state',
+                    'type' => 'STRING'
+                ]
+            ]
+        ];
+        self::$bucket = (new StorageClient([
             'keyFilePath' => $keyFilePath
-        ]);
-
-        self::$bucket = self::createBucket($storage, uniqid(self::TESTING_PREFIX));
-
+        ]))->createBucket(uniqid(self::TESTING_PREFIX));
         self::$client = new BigQueryClient([
             'keyFilePath' => $keyFilePath
         ]);
-        self::$dataset = self::createDataset(self::$client, uniqid(self::TESTING_PREFIX));
+        self::$dataset = self::$client->createDataset(uniqid(self::TESTING_PREFIX));
         self::$table = self::$dataset->createTable(uniqid(self::TESTING_PREFIX), [
-            'schema' => [
-                'fields' => $schema
-            ]
+            'schema' => $schema
         ]);
-
         self::$hasSetUp = true;
+    }
+
+    public static function tearDownFixtures()
+    {
+        if (!self::$hasSetUp) {
+            return;
+        }
+
+        self::$deletionQueue[] = self::$bucket;
+        self::$deletionQueue[] = self::$table;
+        self::$deletionQueue[] = self::$dataset;
+
+        $backoff = new ExponentialBackoff(8);
+
+        foreach (self::$deletionQueue as $item) {
+            $backoff->execute(function () use ($item) {
+                $item->delete();
+            });
+        }
     }
 }
 

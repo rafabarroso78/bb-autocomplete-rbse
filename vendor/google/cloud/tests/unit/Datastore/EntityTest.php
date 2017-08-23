@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Datastore;
+namespace Google\Cloud\Tests\Datastore;
 
 use Google\Cloud\Datastore\Entity;
 use Google\Cloud\Datastore\EntityMapper;
@@ -36,7 +36,7 @@ class EntityTest extends \PHPUnit_Framework_TestCase
             ['kind' => 'kind', 'name' => 'name']
         ]]);
 
-        $this->mapper = new EntityMapper('foo', true, false);
+        $this->mapper = new EntityMapper('foo', true);
     }
 
     public function testCreateEntity()

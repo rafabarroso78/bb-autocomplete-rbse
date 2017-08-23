@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Speech;
+namespace Google\Cloud\Tests\Speech;
 
-use Google\Cloud\Core\Exception\NotFoundException;
+use Google\Cloud\Exception\NotFoundException;
 use Google\Cloud\Speech\Connection\ConnectionInterface;
 use Google\Cloud\Speech\Operation;
-use Google\Cloud\Speech\Result;
 use Prophecy\Argument;
 
 /**
@@ -62,18 +61,26 @@ class OperationTest extends \PHPUnit_Framework_TestCase
 
     public function testGetsResults()
     {
+        $transcript = 'testing';
+        $confidence = 1.0;
         $operation = $this->getOperation($this->connection, $this->operationData + [
             'response' => [
                 'results' => [
                     [
-                        'alternatives' => []
+                        'alternatives' => [
+                            [
+                                'transcript' => $transcript,
+                                'confidence' => $confidence
+                            ]
+                        ]
                     ]
                 ]
             ]
         ]);
         $results = $operation->results();
 
-        $this->assertContainsOnlyInstancesOf(Result::class, $results);
+        $this->assertEquals($transcript, $results[0]['transcript']);
+        $this->assertEquals($confidence, $results[0]['confidence']);
     }
 
     public function testDoesExistTrue()

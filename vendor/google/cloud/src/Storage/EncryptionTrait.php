@@ -18,7 +18,6 @@
 namespace Google\Cloud\Storage;
 
 use InvalidArgumentException;
-use phpseclib\Crypt\RSA;
 
 /**
  * Trait which provides helper methods for customer-supplied encryption.
@@ -48,6 +47,7 @@ trait EncryptionTrait
      *
      * @param array $options
      * @return array
+     * @throws \InvalidArgumentException
      * @access private
      */
     public function formatEncryptionHeaders(array $options)
@@ -67,14 +67,14 @@ trait EncryptionTrait
         unset($options['destinationEncryptionKey']);
         unset($options['destinationEncryptionKeySHA256']);
 
-        $encryptionHeaders = $this->buildHeaders($key, $keySHA256, $useCopySourceHeaders)
-            + $this->buildHeaders($destinationKey, $destinationKeySHA256, false);
+        $encryptionHeaders = $this->buildHeaders($key, $keySHA256, $useCopySourceHeaders, false)
+            + $this->buildHeaders($destinationKey, $destinationKeySHA256, false, true);
 
         if (!empty($encryptionHeaders)) {
-            if (isset($options['restOptions']['headers'])) {
-                $options['restOptions']['headers'] += $encryptionHeaders;
+            if (isset($options['httpOptions']['headers'])) {
+                $options['httpOptions']['headers'] += $encryptionHeaders;
             } else {
-                $options['restOptions']['headers'] = $encryptionHeaders;
+                $options['httpOptions']['headers'] = $encryptionHeaders;
             }
         }
 
@@ -87,58 +87,32 @@ trait EncryptionTrait
      * @param string $key
      * @param string $keySHA256
      * @param bool $useCopySourceHeaders
+     * @param bool $isDestination
      * @return array
+     * @throws \InvalidArgumentException
      */
-    private function buildHeaders($key, $keySHA256, $useCopySourceHeaders)
+    private function buildHeaders($key, $keySHA256, $useCopySourceHeaders, $isDestination)
     {
-        if ($key) {
+        if ($key && $keySHA256) {
             $headerNames = $useCopySourceHeaders
                 ? $this->copySourceEncryptionHeaderNames
                 : $this->encryptionHeaderNames;
 
-            if (!$keySHA256) {
-                $decodedKey = base64_decode($key);
-                $keySHA256 = base64_encode(hash('SHA256', $decodedKey, true));
-            }
-
             return [
                 $headerNames['algorithm'] => 'AES256',
-                $headerNames['key'] => $key,
-                $headerNames['keySHA256'] => $keySHA256
+                $headerNames['key'] => base64_encode($key),
+                $headerNames['keySHA256'] => base64_encode($keySHA256)
             ];
+        } elseif ($key || $keySHA256) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'When providing either %s or %s both must be supplied.',
+                    $isDestination ? 'a destinationEncryptionKey' : 'an encryptionKey',
+                    $isDestination ? 'a destinationEncryptionKeySHA256' : 'an encryptionKeySHA256'
+                )
+            );
         }
 
         return [];
-    }
-
-    /**
-     * Sign a string using a given private key.
-     *
-     * @param string $privateKey The private key to use to sign the data.
-     * @param string $data The data to sign.
-     * @param bool $forceOpenssl If true, OpenSSL will be used regardless of
-     *        whether phpseclib is available. **Defaults to** `false`.
-     * @return string The signature
-     */
-    protected function signString($privateKey, $data, $forceOpenssl = false)
-    {
-        $signature = '';
-
-        if (class_exists(RSA::class) && !$forceOpenssl) {
-            $rsa = new RSA;
-            $rsa->loadKey($privateKey);
-            $rsa->setSignatureMode(RSA::SIGNATURE_PKCS1);
-            $rsa->setHash('sha256');
-
-            $signature = $rsa->sign($data);
-        } elseif (extension_loaded('openssl')) {
-            openssl_sign($data, $signature, $privateKey, 'sha256WithRSAEncryption');
-        } else {
-            // @codeCoverageIgnoreStart
-            throw new \RuntimeException('OpenSSL is not installed.');
-        }
-        // @codeCoverageIgnoreEnd
-
-        return $signature;
     }
 }

@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Speech\Connection;
+namespace Google\Cloud\Tests\Speech\Connection;
 
-use Google\Cloud\Core\RequestBuilder;
-use Google\Cloud\Core\RequestWrapper;
+use Google\Cloud\RequestBuilder;
+use Google\Cloud\RequestWrapper;
 use Google\Cloud\Speech\Connection\Rest;
-use Google\Cloud\Speech\SpeechClient;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
@@ -74,8 +73,8 @@ class RestTest extends \PHPUnit_Framework_TestCase
     public function methodProvider()
     {
         return [
-            ['recognize'],
-            ['longRunningRecognize'],
+            ['syncRecognize'],
+            ['asyncRecognize'],
             ['getOperation']
         ];
     }

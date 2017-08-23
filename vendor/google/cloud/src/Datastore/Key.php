@@ -17,11 +17,13 @@
 
 namespace Google\Cloud\Datastore;
 
-use Google\Cloud\Core\ArrayTrait;
+use Google\Cloud\ArrayTrait;
 use InvalidArgumentException;
 use JsonSerializable;
 
 /**
+ * Represents a Datastore Key.
+ *
  * Keys are unique identifiers for entities.
  *
  * Keys may be considered either "named" or "incomplete". A named Key is one in
@@ -44,15 +46,16 @@ use JsonSerializable;
  *
  * Example:
  * ```
- * use Google\Cloud\Datastore\DatastoreClient;
+ * use Google\Cloud\ServiceBuilder;
  *
- * $datastore = new DatastoreClient();
+ * $cloud = new ServiceBuilder();
+ * $datastore = $cloud->datastore();
  *
  * $key = $datastore->key('Person', 'Bob');
  * ```
  *
  * ```
- * // Keys with complex paths can be constructed with additional method calls.
+ * // Keys with complex paths can be constructed by chaining method calls.
  *
  * $key = $datastore->key('Person', 'Bob');
  * $key->ancestor('Parents', 'Joe');
@@ -187,7 +190,7 @@ class Key implements JsonSerializable
      *
      * Example:
      * ```
-     * $key->ancestor('Person', 'Jane');
+     * $key->ancestor('Person', 'Bob');
      * ```
      *
      * ```
@@ -214,7 +217,7 @@ class Key implements JsonSerializable
      */
     public function ancestor($kind, $identifier, array $options = [])
     {
-        $options += [
+        $options = [
             'identifierType' => null
         ];
 
@@ -294,12 +297,6 @@ class Key implements JsonSerializable
      *
      * This method is used internally when IDs are allocated to existing instances
      * of a Key. It should not generally be used externally.
-     *
-     * Example:
-     * ```
-     * $key = $datastore->key('Person');
-     * $key->setLastElementIdentifier('Bob', Key::TYPE_NAME);
-     * ```
      *
      * @param string $value The value of the ID or Name.
      * @param string $type [optional] 'id' or 'name'. **Defaults to** `"id"`.
