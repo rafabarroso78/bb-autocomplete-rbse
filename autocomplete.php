@@ -2,7 +2,19 @@
 // contains utility functions mb_stripos_all() and apply_highlight()
 //require_once 'local_utils.php';
 
-include 'data.php';
+require __DIR__ . '/vendor/autoload.php'; 
+
+use Google\Cloud\BigQuery\BigQueryClient;
+
+$term = trim($_GET['id']);
+//[START build_service]
+$bigQuery = new BigQueryClient([
+	'projectId' => 'rbse-webserv',
+]);
+
+$query = 'SELECT sku, name  FROM [rbse-webserv:bp.products] where lower(name) like "%'.strtolower($term).'";';
+$options = ['useLegacySql' => true];
+$queryResults = $bigQuery->runQuery($query, $options);
  
 // prevent direct access
 $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) AND
@@ -60,16 +72,29 @@ $p = count($parts);
 //   trigger_error($user_error, E_USER_ERROR);
 // }
 
-foreach($jsonArray as $item)
+if ($queryResults->isComplete()) 
 {
-	if(strpos(strtolower($item->name), strtolower($term)) !== false)
-	{
-		$a_json_row["id"] = $item->sku;
-		$a_json_row["value"] = $item->name;
-		$a_json_row["label"] = $item->name;
+    $rows = $queryResults->rows();
+
+    foreach ($rows as $row) 
+    {
+        $a_json_row["id"] = $row['sku'];
+		$a_json_row["value"] = $row['name'];
+		$a_json_row["label"] = $row['name'];
 		array_push($a_json, $a_json_row);
-	}
-}
+    }
+} 
+
+// foreach($jsonArray as $item)
+// {
+// 	if(strpos(strtolower($item->name), strtolower($term)) !== false)
+// 	{
+// 		$a_json_row["id"] = $item->sku;
+// 		$a_json_row["value"] = $item->name;
+// 		$a_json_row["label"] = $item->name;
+// 		array_push($a_json, $a_json_row);
+// 	}
+// }
 
  
 // highlight search results

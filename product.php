@@ -2,7 +2,6 @@
 	require __DIR__ . '/vendor/autoload.php'; 
 
 	use Google\Cloud\BigQuery\BigQueryClient;
-	include 'data.php';
 
 	$term = trim($_GET['id']);
 	//[START build_service]
@@ -16,26 +15,13 @@
 
 	if ($queryResults->isComplete()) 
         {
-            $i = 0;
             $rows = $queryResults->rows();
 
             foreach ($rows as $row) 
             {
-                $i++;
-
                 $productInfo = $row;
             }
         } 
-
-    var_dump($productInfo);
-
-	// foreach($jsonArray as $item)
-	// {
-	// 	if(strpos($item->sku, $term) !== false)
-	// 	{
-	// 		$productInfo = $item;
-	// 	}
-	// }
 ?>
 <html>
 	<title>Product Search Demo App</title>
