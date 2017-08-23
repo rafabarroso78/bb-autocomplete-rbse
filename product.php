@@ -29,13 +29,13 @@
 
     var_dump($productInfo);
 
-	foreach($jsonArray as $item)
-	{
-		if(strpos($item->sku, $term) !== false)
-		{
-			$productInfo = $item;
-		}
-	}
+	// foreach($jsonArray as $item)
+	// {
+	// 	if(strpos($item->sku, $term) !== false)
+	// 	{
+	// 		$productInfo = $item;
+	// 	}
+	// }
 ?>
 <html>
 	<title>Product Search Demo App</title>
@@ -69,20 +69,20 @@
 
 			<div class="content">
 				<br>
-			  	<h1><? echo $productInfo->name ?><Br><span style="font-size:14px;">SKU: <? echo $productInfo->sku ?></span></h1>
+			  	<h1><? echo $productInfo['name'] ?><Br><span style="font-size:14px;">SKU: <? echo $productInfo['sku'] ?></span></h1>
 			  	<table class="table">
 			  		<tr>
-			  			<td style="width:300px;"><img src="<? echo $productInfo->image ?>" style="width:280;"></td>
+			  			<td style="width:300px;"><img src="<? echo $productInfo['image'] ?>" style="width:280;"></td>
 			  			<td style="text-align:left;">
-			  				<span style="font-size:24px;color:orange">$<? echo number_format($productInfo->price,2)?></span>
+			  				<span style="font-size:24px;color:orange">$<? echo number_format($productInfo['price'],2)?></span>
 			  				<br>
 			  				<br>
 			  				<b>Manufacturer</b><Br>
-			  				<? echo $productInfo->manufacturer ?><br>
+			  				<? echo $productInfo['manufacturer'] ?><br>
 			  				<b>Model</b><Br>
-			  				<? echo $productInfo->model ?><br>
+			  				<? echo $productInfo['model'] ?><br>
 			  				<b>Description</b><Br>
-			  				<? echo $productInfo->description ?>
+			  				<? echo $productInfo['description'] ?>
 			  			</td>
 			  		</tr>
 			  	</table>
