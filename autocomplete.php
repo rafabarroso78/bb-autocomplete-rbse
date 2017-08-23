@@ -6,7 +6,15 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Google\Cloud\BigQuery\BigQueryClient;
 
-$term = strtolower(trim($_GET['id']));
+$term = trim($_GET['id']);
+
+// SECURITY HOLE ***************************************************************
+// allow space, any unicode letter and digit, underscore and dash
+if(preg_match("/[^\040\pL\pN_-]/u", $term)) {
+  print $json_invalid;
+  exit;
+}
+
 //[START build_service]
 $bigQuery = new BigQueryClient([
 	'projectId' => 'rbse-webserv',
@@ -24,11 +32,7 @@ if(!$isAjax) {
   trigger_error($user_error, E_USER_ERROR);
 }
  
-// get what user typed in autocomplete input
-$term = trim($_GET['term']);
-//$term = 'Metra';
- 
-$a_json = array();
+ = array();
 $a_json_row = array();
  
 $a_json_invalid = array(array("id" => "#", "value" => $term, "label" => "Only letters and digits are permitted..."));
@@ -36,27 +40,6 @@ $json_invalid = json_encode($a_json_invalid);
  
 // replace multiple spaces with one
 $term = preg_replace('/\s+/', ' ', $term);
- 
-// SECURITY HOLE ***************************************************************
-// allow space, any unicode letter and digit, underscore and dash
-if(preg_match("/[^\040\pL\pN_-]/u", $term)) {
-  print $json_invalid;
-  exit;
-}
-// *****************************************************************************
- 
-// database connection
-// $conn = new mysqli("db_server", "db_user", "db_passwd", "db_name");
- 
-// if($conn->connect_error) {
-//   echo 'Database connection failed...' . 'Error: ' . $conn->connect_errno . ' ' . $conn->connect_error;
-//   exit;
-// } else {
-//   $conn->set_charset('utf8');
-// }
- 
-$parts = explode(' ', $term);
-$p = count($parts);
  
 /**
  * Create SQL
