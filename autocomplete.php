@@ -8,6 +8,10 @@ use Google\Cloud\BigQuery\BigQueryClient;
 
 $term = trim($_GET['id']);
 
+$term = preg_replace('/\s+/', ' ', $term);
+
+$a_json_invalid = array(array("id" => "#", "value" => $term, "label" => "Only letters and digits are permitted..."));
+$json_invalid = json_encode($a_json_invalid);
 // SECURITY HOLE ***************************************************************
 // allow space, any unicode letter and digit, underscore and dash
 if(preg_match("/[^\040\pL\pN_-]/u", $term)) {
@@ -32,14 +36,10 @@ if(!$isAjax) {
   trigger_error($user_error, E_USER_ERROR);
 }
  
- = array();
+$a_json = array();
 $a_json_row = array();
  
-$a_json_invalid = array(array("id" => "#", "value" => $term, "label" => "Only letters and digits are permitted..."));
-$json_invalid = json_encode($a_json_invalid);
- 
 // replace multiple spaces with one
-$term = preg_replace('/\s+/', ' ', $term);
  
 /**
  * Create SQL
