@@ -12,10 +12,9 @@ $bigQuery = new BigQueryClient([
 	'projectId' => 'rbse-webserv',
 ]);
 
-$query = 'SELECT sku, name  FROM [rbse-webserv:bp.products] where lower(name) like "%'.strtolower($term).'%";';
-var_dump($query);
+$query = 'SELECT sku, name  FROM [rbse-webserv:bp.products] limi 1;';
 $options = ['useLegacySql' => true];
-$queryResults = $bigQuery->runQuery($query, $options);
+$queryResults1 = $bigQuery->runQuery($query, $options);
  
 // prevent direct access
 $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) AND
@@ -73,9 +72,9 @@ $p = count($parts);
 //   trigger_error($user_error, E_USER_ERROR);
 // }
 
-if ($queryResults->isComplete()) 
+if ($queryResults1->isComplete()) 
 {
-    $rows = $queryResults->rows();
+    $rows = $queryResults1->rows();
 
     foreach ($rows as $row) 
     {
