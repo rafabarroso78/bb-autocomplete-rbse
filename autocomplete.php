@@ -12,7 +12,7 @@ $bigQuery = new BigQueryClient([
 	'projectId' => 'rbse-webserv',
 ]);
 
-$query = 'SELECT sku, name  FROM [rbse-webserv:bp.products] limi 1;';
+$query = 'SELECT sku, name  FROM [rbse-webserv:bp.products] limit 1;';
 $options = ['useLegacySql' => true];
 $queryResults1 = $bigQuery->runQuery($query, $options);
  
