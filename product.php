@@ -9,7 +9,7 @@
     	'projectId' => 'rbse-webserv',
 	]);
 
-	$query = 'SELECT * FROM [rbse-webserv:bp.products] WHERE sku = '.$term.' LIMIT 1;';
+	$query = 'SELECT * FROM [rbse-webserv:bp.productsf] WHERE sku = '.$term.' LIMIT 1;';
 
 	$options = ['useLegacySql' => true];
 	$queryResults = $bigQuery->runQuery($query, $options);

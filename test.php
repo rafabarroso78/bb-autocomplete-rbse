@@ -13,7 +13,7 @@ $bigQuery = new BigQueryClient([
 	'projectId' => 'rbse-webserv',
 ]);
 
-$query = 'SELECT sku, name FROM [rbse-webserv:bp.products] where lower(name) like "%'.$term.'%";';
+$query = 'SELECT sku, name FROM [rbse-webserv:bp.productsf] where lower(name) like "%'.$term.'%";';
 $options = ['useLegacySql' => true];
 
 echo 'query: '.$query;
