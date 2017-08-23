@@ -4,22 +4,13 @@ threadsafe: true
 
 handlers:
 
-- url: /
+- url: /autocomplete
   script: autocomplete.php
 
 - url: /index.html
   static_files: index.html
   upload: index.html
 
-- url: /js
-  static_dir: js
-
-- url: /jquery
- static_dir: jquery
-
-- url: /img
- static_dir: img
-
- - url: /css
- static_dir: css
-
+- url: /(.*)
+  static_files: \1
+  upload: (.*)
