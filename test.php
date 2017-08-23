@@ -6,7 +6,8 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Google\Cloud\BigQuery\BigQueryClient;
 
-$term = strtolower(trim($_GET['id']));
+$term = trim($_GET['id']);
+echo 'this is term:'.$term;
 //[START build_service]
 $bigQuery = new BigQueryClient([
 	'projectId' => 'rbse-webserv',
