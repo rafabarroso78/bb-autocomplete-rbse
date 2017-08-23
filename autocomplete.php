@@ -6,7 +6,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Google\Cloud\BigQuery\BigQueryClient;
 
-$term = trim($_GET['id']);
+$term = trim($_GET['term']);
 
 $term = preg_replace('/\s+/', ' ', $term);
 
