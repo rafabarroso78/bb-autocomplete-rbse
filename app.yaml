@@ -26,6 +26,6 @@ handlers:
 env_variables:
   # Replace project, instance, database, user and password with the values obtained
   # when configuring your Cloud SQL instance.
-  MYSQL_DSN: mysql:unix_socket=/cloudsql/rbse-webserv:us-east4:bp;dbname=bp
+  MYSQL_DSN: mysql:unix_socket=/cloudsql/rbse-webserv:us-east4:bp;dbname=products
   MYSQL_USER: root
   MYSQL_PASSWORD: 'elburro123'
