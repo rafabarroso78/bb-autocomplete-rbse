@@ -15,8 +15,7 @@ echo 'this is term:'.$term;
 // 	'projectId' => 'rbse-webserv',
 // ]);
 // Connect to CloudSQL from App Engine.
-// $dsn = getenv('MYSQL_DSN');
-$dsn = '35.188.253.244';
+$dsn = getenv('MYSQL_DSN');
 $user = getenv('MYSQL_USER');
 $password = getenv('MYSQL_PASSWORD');
 if (!isset($dsn, $user) || false === $password) {
