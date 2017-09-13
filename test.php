@@ -14,12 +14,17 @@ echo 'this is term:'.$term;
 // $bigQuery = new BigQueryClient([
 // 	'projectId' => 'rbse-webserv',
 // ]);
+// Connect to CloudSQL from App Engine.
 $dsn = getenv('MYSQL_DSN');
 $user = getenv('MYSQL_USER');
 $password = getenv('MYSQL_PASSWORD');
-$pdo = new PDO($dsn, $user, $password);
+if (!isset($dsn, $user) || false === $password) {
+    throw new Exception('Set MYSQL_DSN, MYSQL_USER, and MYSQL_PASSWORD environment variables');
+}
 
-$queryResults1 = $pdo->query('SELECT sku, name FROM products where lower(name) like "%'.$term.'%";');
+$db = new PDO($dsn, $user, $password);
+
+$queryResults1 = $db->query('SELECT sku, name FROM products where lower(name) like "%'.$term.'%"');
 //$options = ['useLegacySql' => true];
 
 //echo 'query: '.$query;
