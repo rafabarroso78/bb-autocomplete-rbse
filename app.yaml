@@ -7,6 +7,9 @@ handlers:
 - url: /autocomplete
   script: autocomplete.php
 
+- url: /autocomplete2
+  script: autocomplete2.php
+
 - url: /
   static_files: index.html
   upload: index.html
@@ -19,3 +22,10 @@ handlers:
 
 - url: /static
   static_dir: static
+
+env_variables:
+  # Replace project, instance, database, user and password with the values obtained
+  # when configuring your Cloud SQL instance.
+  MYSQL_DSN: mysql:unix_socket=/cloudsql/rbse-webserv:us-east4:bp;dbname=bp
+  MYSQL_USER: root
+  MYSQL_PASSWORD: 'elburro123'

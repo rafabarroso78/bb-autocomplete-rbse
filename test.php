@@ -4,21 +4,27 @@
 
 require __DIR__ . '/vendor/autoload.php'; 
 
-use Google\Cloud\BigQuery\BigQueryClient;
+//use Google\Cloud\BigQuery\BigQueryClient;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 $term = trim($_GET['id']);
 echo 'this is term:'.$term;
 //[START build_service]
-$bigQuery = new BigQueryClient([
-	'projectId' => 'rbse-webserv',
-]);
+// $bigQuery = new BigQueryClient([
+// 	'projectId' => 'rbse-webserv',
+// ]);
+$dsn = getenv('MYSQL_DSN');
+$user = getenv('MYSQL_USER');
+$password = getenv('MYSQL_PASSWORD');
+$pdo = new PDO($dsn, $user, $password);
 
-$query = 'SELECT sku, name FROM [rbse-webserv:bp.productsf] where lower(name) like "%'.$term.'%";';
-$options = ['useLegacySql' => true];
+$queryResults1 = $pdo->query('SELECT sku, name FROM products where lower(name) like "%'.$term.'%";');
+//$options = ['useLegacySql' => true];
 
-echo 'query: '.$query;
+//echo 'query: '.$query;
    
-$queryResults1 = $bigQuery->runQuery($query, $options);
+//$queryResults1 = $bigQuery->runQuery($query, $options);
 
 $a_json = array();
 $a_json_row = array();
